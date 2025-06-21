@@ -1,52 +1,62 @@
 # Task 11: デプロイメントドキュメント作成
 
 ## 概要
-excalidraw-boardの本番環境デプロイメント、運用、トラブルシューティングに関する包括的なドキュメントを作成する。技術者以外でも理解できるよう、段階的で詳細な手順を提供する。
+
+excalidraw-board の本番環境デプロイメント、運用、トラブルシューティングに関する包括的なドキュメントを作成する。技術者以外でも理解できるよう、段階的で詳細な手順を提供する。
 
 ## 目的
+
 - インストール手順書の作成
 - 運用マニュアルの作成
 - トラブルシューティングガイドの作成
 - セキュリティ設定ガイドの作成
 
 ## 前提条件
-- Task 01-10が完了していること
+
+- Task 01-10 が完了していること
 - 本番環境用設定が完成していること
 
 ## 作業内容
 
 ### 1. インストールガイド
+
 `docs/installation.md`:
-```markdown
+
+````markdown
 # Excalidraw Board インストールガイド
 
 ## 概要
-Excalidraw Boardは、ローカルネットワーク内でセルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーションです。
+
+Excalidraw Board は、ローカルネットワーク内でセルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーションです。
 
 ## システム要件
 
 ### 最小要件
-- CPU: 2コア以上
-- メモリ: 4GB以上
-- ストレージ: 10GB以上の空き容量
-- OS: Ubuntu 20.04 LTS / CentOS 8 / Docker対応OS
+
+- CPU: 2 コア以上
+- メモリ: 4GB 以上
+- ストレージ: 10GB 以上の空き容量
+- OS: Ubuntu 20.04 LTS / CentOS 8 / Docker 対応 OS
 
 ### 推奨要件
-- CPU: 4コア以上
-- メモリ: 8GB以上
-- ストレージ: 20GB以上の空き容量
-- ネットワーク: 1Gbps以上
+
+- CPU: 4 コア以上
+- メモリ: 8GB 以上
+- ストレージ: 20GB 以上の空き容量
+- ネットワーク: 1Gbps 以上
 
 ### 必要なソフトウェア
-- Docker 20.10以上
-- Docker Compose 2.0以上
+
+- Docker 20.10 以上
+- Docker Compose 2.0 以上
 - Git
 
 ## インストール手順
 
 ### 1. システムの準備
 
-#### Ubuntu/Debian系
+#### Ubuntu/Debian 系
+
 ```bash
 # システムの更新
 sudo apt update && sudo apt upgrade -y
@@ -66,8 +76,10 @@ sudo chmod +x /usr/local/bin/docker-compose
 # 再ログインまたは以下を実行
 newgrp docker
 ```
+````
 
-#### CentOS/RHEL系
+#### CentOS/RHEL 系
+
 ```bash
 # システムの更新
 sudo yum update -y
@@ -92,7 +104,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 ```bash
 # プロジェクトのクローン
-git clone https://github.com/your-organization/excalidraw-board.git
+git clone https://github.com/tkhr-sait/excalidraw-board.git
 cd excalidraw-board
 
 # ブランチの確認（最新の安定版を使用）
@@ -137,6 +149,7 @@ curl http://localhost/health
 ### ファイアウォール設定
 
 #### Ubuntu (ufw)
+
 ```bash
 sudo ufw allow 80/tcp
 sudo ufw allow 22/tcp  # SSH用
@@ -144,15 +157,16 @@ sudo ufw enable
 ```
 
 #### CentOS (firewalld)
+
 ```bash
 sudo firewall-cmd --permanent --add-port=80/tcp
 sudo firewall-cmd --permanent --add-port=22/tcp
 sudo firewall-cmd --reload
 ```
 
-### SSL証明書の設定（オプション）
+### SSL 証明書の設定（オプション）
 
-HTTPS化が必要な場合:
+HTTPS 化が必要な場合:
 
 ```bash
 # Let's Encryptの設定例
@@ -167,13 +181,15 @@ sudo certbot certonly --standalone -d your-domain.com
 
 ### よくある問題
 
-1. **Dockerサービスが起動しない**
+1. **Docker サービスが起動しない**
+
    ```bash
    sudo systemctl status docker
    sudo systemctl restart docker
    ```
 
-2. **ポート80が使用中**
+2. **ポート 80 が使用中**
+
    ```bash
    sudo lsof -i :80
    # 他のWebサーバーを停止
@@ -197,7 +213,8 @@ docker-compose -f docker/docker-compose.prod.yml logs -f
 docker-compose -f docker/docker-compose.prod.yml logs frontend
 docker-compose -f docker/docker-compose.prod.yml logs excalidraw-room
 ```
-```
+
+````
 
 ### 2. 運用マニュアル
 `docs/operations.md`:
@@ -221,11 +238,12 @@ docker-compose -f docker/docker-compose.prod.yml logs excalidraw-room
 
 # リアルタイム監視
 watch -n 5 './scripts/monitor.sh'
-```
+````
 
 ### 2. バックアップ
 
 #### 設定ファイルのバックアップ
+
 ```bash
 # バックアップディレクトリの作成
 mkdir -p ~/excalidraw-backups/$(date +%Y%m%d)
@@ -236,7 +254,8 @@ cp .env ~/excalidraw-backups/$(date +%Y%m%d)/
 cp -r scripts/ ~/excalidraw-backups/$(date +%Y%m%d)/
 ```
 
-#### Dockerイメージのバックアップ
+#### Docker イメージのバックアップ
+
 ```bash
 # イメージの保存
 docker save excalidraw-board_frontend:latest | gzip > ~/excalidraw-backups/$(date +%Y%m%d)/frontend.tar.gz
@@ -245,6 +264,7 @@ docker save excalidraw-board_frontend:latest | gzip > ~/excalidraw-backups/$(dat
 ### 3. 更新・メンテナンス
 
 #### アプリケーションの更新
+
 ```bash
 # 1. 現在の状態をバックアップ
 ./scripts/backup.sh
@@ -262,6 +282,7 @@ git pull origin main
 ```
 
 #### システムの再起動
+
 ```bash
 # グレースフルな再起動
 docker-compose -f docker/docker-compose.prod.yml restart
@@ -274,12 +295,14 @@ docker-compose -f docker/docker-compose.prod.yml up -d
 ### 4. パフォーマンス監視
 
 #### メトリクスの確認
-- CPU使用率: 80%以下を維持
+
+- CPU 使用率: 80%以下を維持
 - メモリ使用率: 80%以下を維持
 - ディスク使用率: 80%以下を維持
-- レスポンス時間: 1秒以下を維持
+- レスポンス時間: 1 秒以下を維持
 
 #### パフォーマンス改善
+
 ```bash
 # Dockerイメージの最適化
 docker system prune -f
@@ -295,7 +318,8 @@ docker stats
 
 ### 1. サービス停止時の対応
 
-#### 症状: Webサイトにアクセスできない
+#### 症状: Web サイトにアクセスできない
+
 ```bash
 # 1. サービス状態の確認
 docker-compose -f docker/docker-compose.prod.yml ps
@@ -312,6 +336,7 @@ docker-compose -f docker/docker-compose.prod.yml up -d
 ```
 
 #### 症状: コラボレーション機能が動作しない
+
 ```bash
 # 1. excalidraw-roomサービスの確認
 docker-compose -f docker/docker-compose.prod.yml logs excalidraw-room
@@ -325,7 +350,8 @@ docker-compose -f docker/docker-compose.prod.yml restart excalidraw-room
 
 ### 2. 高負荷時の対応
 
-#### CPU使用率が90%を超えた場合
+#### CPU 使用率が 90%を超えた場合
+
 ```bash
 # 1. プロセスの確認
 docker stats
@@ -338,6 +364,7 @@ docker stats
 ```
 
 #### メモリ不足の場合
+
 ```bash
 # 1. メモリ使用量の確認
 free -h
@@ -354,6 +381,7 @@ sudo swapon /swapfile
 ### 3. データ復旧
 
 #### 設定ファイルの復旧
+
 ```bash
 # バックアップからの復旧
 cp ~/excalidraw-backups/20231201/* ./
@@ -366,8 +394,10 @@ cp ~/excalidraw-backups/20231201/* ./
 
 ### 1. アクセス制御
 
-#### IP制限の設定
-nginx設定ファイルに以下を追加:
+#### IP 制限の設定
+
+nginx 設定ファイルに以下を追加:
+
 ```nginx
 # 特定のIPからのみアクセスを許可
 allow 192.168.1.0/24;
@@ -375,7 +405,8 @@ allow 10.0.0.0/8;
 deny all;
 ```
 
-#### Basic認証の設定
+#### Basic 認証の設定
+
 ```bash
 # パスワードファイルの作成
 sudo apt install apache2-utils
@@ -386,9 +417,10 @@ auth_basic "Restricted Area";
 auth_basic_user_file /etc/nginx/.htpasswd;
 ```
 
-### 2. SSL/TLS設定
+### 2. SSL/TLS 設定
 
 #### 証明書の更新
+
 ```bash
 # Let's Encryptの証明書更新
 sudo certbot renew
@@ -400,6 +432,7 @@ docker-compose -f docker/docker-compose.prod.yml restart frontend
 ### 3. ログ監視
 
 #### セキュリティイベントの監視
+
 ```bash
 # アクセスログの確認
 docker-compose -f docker/docker-compose.prod.yml logs frontend | grep -E "40[0-9]|50[0-9]"
@@ -407,7 +440,8 @@ docker-compose -f docker/docker-compose.prod.yml logs frontend | grep -E "40[0-9
 # 異常なアクセスパターンの検出
 awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -nr | head -10
 ```
-```
+
+````
 
 ### 3. トラブルシューティングガイド
 `docs/troubleshooting.md`:
@@ -432,9 +466,10 @@ sudo systemctl status docker
 # 対処
 sudo systemctl start docker
 sudo systemctl enable docker
-```
+````
 
-**原因2: ポートが使用中**
+**原因 2: ポートが使用中**
+
 ```bash
 # 確認
 sudo lsof -i :80
@@ -449,7 +484,8 @@ sudo systemctl stop nginx
 # docker-compose.prod.yml の ports を "8080:8080" に変更
 ```
 
-**原因3: ファイアウォールでポートがブロックされている**
+**原因 3: ファイアウォールでポートがブロックされている**
+
 ```bash
 # Ubuntu
 sudo ufw status
@@ -464,13 +500,15 @@ sudo firewall-cmd --reload
 ### 2. コラボレーション機能が動作しない
 
 #### 症状
+
 - 「Join Room」ボタンが無効
 - ルームに参加できない
 - 他のユーザーの描画が同期されない
 
 #### 原因と対処法
 
-**原因1: excalidraw-roomサービスが起動していない**
+**原因 1: excalidraw-room サービスが起動していない**
+
 ```bash
 # 確認
 docker-compose -f docker/docker-compose.prod.yml ps
@@ -479,7 +517,8 @@ docker-compose -f docker/docker-compose.prod.yml ps
 docker-compose -f docker/docker-compose.prod.yml up -d excalidraw-room
 ```
 
-**原因2: WebSocket接続の問題**
+**原因 2: WebSocket 接続の問題**
+
 ```bash
 # 確認
 telnet localhost 3002
@@ -491,7 +530,8 @@ curl -I http://localhost:3002
 # docker/nginx/nginx.prod.conf の location /socket.io/ セクション
 ```
 
-**原因3: ネットワーク設定の問題**
+**原因 3: ネットワーク設定の問題**
+
 ```bash
 # 確認
 docker network ls
@@ -506,13 +546,15 @@ docker-compose -f docker/docker-compose.prod.yml up -d
 ### 3. パフォーマンスの問題
 
 #### 症状
+
 - ページの読み込みが遅い
 - 描画動作がもっさりする
-- CPUやメモリ使用率が高い
+- CPU やメモリ使用率が高い
 
 #### 原因と対処法
 
-**原因1: リソース不足**
+**原因 1: リソース不足**
+
 ```bash
 # 確認
 free -h
@@ -530,11 +572,13 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-**原因2: 大量の要素による負荷**
+**原因 2: 大量の要素による負荷**
+
 - ユーザーに描画要素数の制限を設けることを検討
 - 定期的にキャンバスをクリアするよう案内
 
-**原因3: ネットワーク帯域の問題**
+**原因 3: ネットワーク帯域の問題**
+
 ```bash
 # 確認
 iftop  # ネットワーク使用量の監視
@@ -548,17 +592,20 @@ ping -c 4 8.8.8.8  # 外部ネットワークの確認
 ### 4. データの問題
 
 #### 症状
+
 - 描画データが保存されない
 - ページをリロードすると描画が消える
 
 #### 原因と対処法
 
-**原因1: ローカルストレージの問題**
+**原因 1: ローカルストレージの問題**
+
 - ブラウザの設定確認
 - プライベートモードでないことを確認
 - 別のブラウザで試す
 
-**原因2: JavaScript エラー**
+**原因 2: JavaScript エラー**
+
 ```bash
 # ブラウザの開発者ツールでコンソールエラーを確認
 # F12 → Console タブ
@@ -567,13 +614,15 @@ ping -c 4 8.8.8.8  # 外部ネットワークの確認
 ### 5. SSL/HTTPS の問題
 
 #### 症状
-- SSL証明書エラー
-- Mixed contentエラー
-- WebSocketがHTTPS環境で動作しない
+
+- SSL 証明書エラー
+- Mixed content エラー
+- WebSocket が HTTPS 環境で動作しない
 
 #### 原因と対処法
 
-**原因1: 証明書の期限切れ**
+**原因 1: 証明書の期限切れ**
+
 ```bash
 # 確認
 openssl x509 -in /path/to/certificate.crt -text -noout | grep "Not After"
@@ -582,12 +631,14 @@ openssl x509 -in /path/to/certificate.crt -text -noout | grep "Not After"
 sudo certbot renew
 ```
 
-**原因2: WebSocketのHTTPS対応**
+**原因 2: WebSocket の HTTPS 対応**
+
 ```javascript
 // フロントエンドでWSS（WebSocket Secure）を使用
-const socketUrl = location.protocol === 'https:' ? 
-  'wss://example.com/socket.io' : 
-  'ws://example.com/socket.io';
+const socketUrl =
+  location.protocol === "https:"
+    ? "wss://example.com/socket.io"
+    : "ws://example.com/socket.io";
 ```
 
 ## ログ解析
@@ -595,21 +646,23 @@ const socketUrl = location.protocol === 'https:' ?
 ### 重要なログファイル
 
 1. **アプリケーションログ**
+
    ```bash
    docker-compose -f docker/docker-compose.prod.yml logs frontend
    docker-compose -f docker/docker-compose.prod.yml logs excalidraw-room
    ```
 
 2. **システムログ**
+
    ```bash
    # Ubuntu
    sudo journalctl -u docker
-   
+
    # CentOS
    sudo systemctl status docker
    ```
 
-3. **Nginxログ**
+3. **Nginx ログ**
    ```bash
    docker exec excalidraw-frontend-prod tail -f /var/log/nginx/access.log
    docker exec excalidraw-frontend-prod tail -f /var/log/nginx/error.log
@@ -618,6 +671,7 @@ const socketUrl = location.protocol === 'https:' ?
 ### ログレベルの調整
 
 本番環境では以下の設定を推奨:
+
 ```bash
 # .env ファイル
 VITE_LOG_LEVEL=warn
@@ -625,6 +679,7 @@ NODE_ENV=production
 ```
 
 開発・デバッグ時:
+
 ```bash
 VITE_LOG_LEVEL=debug
 NODE_ENV=development
@@ -632,32 +687,34 @@ NODE_ENV=development
 
 ### よくあるエラーメッセージ
 
-| エラーメッセージ | 原因 | 対処法 |
-|------------------|------|--------|
-| "Connection refused" | サービス停止 | サービス再起動 |
-| "Port already in use" | ポート重複 | 他サービス停止またはポート変更 |
-| "Permission denied" | 権限不足 | sudo権限確認、ファイル権限確認 |
-| "Out of memory" | メモリ不足 | メモリ増設、スワップ追加 |
-| "WebSocket connection failed" | ネットワーク問題 | プロキシ設定確認 |
+| エラーメッセージ              | 原因             | 対処法                          |
+| ----------------------------- | ---------------- | ------------------------------- |
+| "Connection refused"          | サービス停止     | サービス再起動                  |
+| "Port already in use"         | ポート重複       | 他サービス停止またはポート変更  |
+| "Permission denied"           | 権限不足         | sudo 権限確認、ファイル権限確認 |
+| "Out of memory"               | メモリ不足       | メモリ増設、スワップ追加        |
+| "WebSocket connection failed" | ネットワーク問題 | プロキシ設定確認                |
 
 ## 復旧手順
 
 ### 完全復旧手順
 
 1. **現状の確認**
+
    ```bash
    ./scripts/monitor.sh
    docker-compose -f docker/docker-compose.prod.yml ps
    ```
 
 2. **バックアップからの復旧**
+
    ```bash
    # サービス停止
    docker-compose -f docker/docker-compose.prod.yml down
-   
+
    # バックアップからの復元
    cp -r ~/excalidraw-backups/最新日付/* ./
-   
+
    # サービス再起動
    ./scripts/deploy.sh
    ```
@@ -667,7 +724,8 @@ NODE_ENV=development
    curl http://localhost/health
    ./scripts/monitor.sh
    ```
-```
+
+````
 
 ### 4. セキュリティガイド
 `docs/security.md`:
@@ -692,9 +750,10 @@ sudo apt autoremove -y
 # CentOS/RHEL
 sudo yum update -y
 sudo yum autoremove -y
-```
+````
 
 #### 不要なサービスの無効化
+
 ```bash
 # 実行中のサービス確認
 sudo systemctl list-units --state=running
@@ -704,7 +763,8 @@ sudo systemctl stop [service-name]
 sudo systemctl disable [service-name]
 ```
 
-#### SSH設定の強化
+#### SSH 設定の強化
+
 ```bash
 # /etc/ssh/sshd_config の編集
 sudo vim /etc/ssh/sshd_config
@@ -725,6 +785,7 @@ sudo systemctl restart ssh
 ### 2. ファイアウォール設定
 
 #### UFW（Ubuntu）
+
 ```bash
 # デフォルトポリシーの設定
 sudo ufw default deny incoming
@@ -747,6 +808,7 @@ sudo ufw status verbose
 ```
 
 #### firewalld（CentOS）
+
 ```bash
 # HTTPとHTTPSの許可
 sudo firewall-cmd --permanent --add-service=http
@@ -766,6 +828,7 @@ sudo firewall-cmd --list-all
 ### 3. Docker セキュリティ
 
 #### Docker デーモンの設定
+
 ```json
 # /etc/docker/daemon.json
 {
@@ -781,21 +844,23 @@ sudo firewall-cmd --list-all
 ```
 
 #### コンテナの実行権限
+
 ```yaml
 # docker-compose.prod.yml での設定例
 services:
   frontend:
-    user: "1001:1001"  # 非rootユーザーで実行
-    read_only: true     # ファイルシステムを読み取り専用に
+    user: "1001:1001" # 非rootユーザーで実行
+    read_only: true # ファイルシステムを読み取り専用に
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
 ```
 
-### 4. Webサーバーセキュリティ
+### 4. Web サーバーセキュリティ
 
 #### セキュリティヘッダーの設定
+
 ```nginx
 # security-headers.conf
 add_header X-Frame-Options "DENY" always;
@@ -809,23 +874,25 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; prelo
 ```
 
 #### Content Security Policy (CSP)
+
 ```nginx
-add_header Content-Security-Policy 
-  "default-src 'self'; 
-   script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
-   style-src 'self' 'unsafe-inline'; 
-   img-src 'self' data: blob:; 
-   font-src 'self'; 
-   connect-src 'self' ws: wss:; 
-   frame-src 'none'; 
-   object-src 'none'; 
-   base-uri 'self'; 
+add_header Content-Security-Policy
+  "default-src 'self';
+   script-src 'self' 'unsafe-inline' 'unsafe-eval';
+   style-src 'self' 'unsafe-inline';
+   img-src 'self' data: blob:;
+   font-src 'self';
+   connect-src 'self' ws: wss:;
+   frame-src 'none';
+   object-src 'none';
+   base-uri 'self';
    form-action 'self';" always;
 ```
 
 ### 5. アクセス制御
 
-#### IP制限の設定
+#### IP 制限の設定
+
 ```nginx
 # 特定のネットワークからのみアクセス許可
 location / {
@@ -833,12 +900,13 @@ location / {
     allow 10.0.0.0/8;
     allow 172.16.0.0/12;
     deny all;
-    
+
     try_files $uri $uri/ /index.html;
 }
 ```
 
-#### Basic認証の追加
+#### Basic 認証の追加
+
 ```bash
 # パスワードファイルの作成
 sudo htpasswd -c /etc/nginx/.htpasswd admin
@@ -847,14 +915,14 @@ sudo htpasswd -c /etc/nginx/.htpasswd admin
 location / {
     auth_basic "Restricted Access";
     auth_basic_user_file /etc/nginx/.htpasswd;
-    
+
     try_files $uri $uri/ /index.html;
 }
 ```
 
-## SSL/TLS設定
+## SSL/TLS 設定
 
-### 1. Let's Encrypt証明書の設定
+### 1. Let's Encrypt 証明書の設定
 
 ```bash
 # Certbotのインストール
@@ -882,7 +950,7 @@ server {
     listen 443 ssl;
     ssl_certificate /etc/ssl/certs/excalidraw.crt;
     ssl_certificate_key /etc/ssl/private/excalidraw.key;
-    
+
     # SSL設定の強化
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512;
@@ -951,11 +1019,12 @@ nmap -sV --script vuln localhost
 ### 1. セキュリティインシデントの検知
 
 #### 監視すべき指標
+
 - 異常なトラフィック量
-- 404エラーの急増
-- 不審なUser-Agent
+- 404 エラーの急増
+- 不審な User-Agent
 - 深夜の異常なアクセス
-- 複数のIPからの同時アクセス
+- 複数の IP からの同時アクセス
 
 ### 2. インシデント発生時の対応
 
@@ -986,28 +1055,32 @@ grep [攻撃元IP] /var/log/nginx/error.log
 ## セキュリティチェックリスト
 
 ### 初期設定時
-- [ ] OSの最新化
+
+- [ ] OS の最新化
 - [ ] 不要なサービスの停止
 - [ ] ファイアウォールの設定
-- [ ] SSHの設定強化
-- [ ] 証明書の設定（HTTPS化）
+- [ ] SSH の設定強化
+- [ ] 証明書の設定（HTTPS 化）
 - [ ] セキュリティヘッダーの設定
 - [ ] アクセス制限の設定
 
 ### 定期メンテナンス
-- [ ] OSとパッケージの更新
+
+- [ ] OS とパッケージの更新
 - [ ] 証明書の有効期限確認
 - [ ] ログの確認と分析
 - [ ] バックアップの確認
 - [ ] 脆弱性スキャンの実行
 
 ### 緊急時
+
 - [ ] インシデントの記録
 - [ ] ログの保全
 - [ ] 攻撃元の特定とブロック
 - [ ] 影響範囲の調査
 - [ ] 復旧計画の立案と実行
-```
+
+````
 
 ### 5. README.mdの更新
 `README.md`の更新:
@@ -1042,12 +1115,12 @@ excalidraw-boardは、Excalidrawライブラリを使用したリアルタイム
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/your-org/excalidraw-board.git
+git clone https://github.com/tkhr-sait/excalidraw-board.git
 cd excalidraw-board
 
 # 本番環境用デプロイ
 ./scripts/deploy.sh
-```
+````
 
 アプリケーションは http://localhost でアクセスできます。
 
@@ -1090,7 +1163,7 @@ excalidraw-board/
 - **バックエンド**: excalidraw-room (公式)
 - **通信**: Socket.IO (WebSocket)
 - **コンテナ**: Docker, Docker Compose
-- **Webサーバー**: Nginx
+- **Web サーバー**: Nginx
 - **テスト**: Vitest, Playwright
 
 ## ライセンス
@@ -1099,12 +1172,13 @@ MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
 
 ## サポート
 
-- [Issue報告](https://github.com/your-org/excalidraw-board/issues)
-- [ディスカッション](https://github.com/your-org/excalidraw-board/discussions)
+- [Issue 報告](https://github.com/tkhr-sait/excalidraw-board/issues)
+- [ディスカッション](https://github.com/tkhr-sait/excalidraw-board/discussions)
 
 ## 貢献
 
 コントリビューションを歓迎します！詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
 ```
 
 ## テスト要件
@@ -1150,3 +1224,4 @@ MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
 
 ## 次のタスク
 Task 12: 最終動作確認とリリース準備
+```

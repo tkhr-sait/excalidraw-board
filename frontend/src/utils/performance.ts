@@ -90,8 +90,8 @@ export class PerformanceMonitor {
           if (entry.entryType === 'navigation') {
             const navEntry = entry as PerformanceNavigationTiming;
             console.log('Page Load Metrics:', {
-              loadComplete: navEntry.loadEventEnd - navEntry.navigationStart,
-              domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.navigationStart,
+              loadComplete: navEntry.loadEventEnd - navEntry.fetchStart,
+              domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.fetchStart,
               firstPaint: this.getFirstPaint(),
               firstContentfulPaint: this.getFirstContentfulPaint(),
             });

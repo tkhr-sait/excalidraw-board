@@ -1,32 +1,37 @@
 # Excalidraw Board インストールガイド
 
 ## 概要
-Excalidraw Boardは、ローカルネットワーク内でセルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーションです。
+
+Excalidraw Board は、ローカルネットワーク内でセルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーションです。
 
 ## システム要件
 
 ### 最小要件
-- CPU: 2コア以上
-- メモリ: 4GB以上
-- ストレージ: 10GB以上の空き容量
-- OS: Ubuntu 20.04 LTS / CentOS 8 / Docker対応OS
+
+- CPU: 2 コア以上
+- メモリ: 4GB 以上
+- ストレージ: 10GB 以上の空き容量
+- OS: Ubuntu 20.04 LTS / CentOS 8 / Docker 対応 OS
 
 ### 推奨要件
-- CPU: 4コア以上
-- メモリ: 8GB以上
-- ストレージ: 20GB以上の空き容量
-- ネットワーク: 1Gbps以上
+
+- CPU: 4 コア以上
+- メモリ: 8GB 以上
+- ストレージ: 20GB 以上の空き容量
+- ネットワーク: 1Gbps 以上
 
 ### 必要なソフトウェア
-- Docker 20.10以上
-- Docker Compose 2.0以上
+
+- Docker 20.10 以上
+- Docker Compose 2.0 以上
 - Git
 
 ## インストール手順
 
 ### 1. システムの準備
 
-#### Ubuntu/Debian系
+#### Ubuntu/Debian 系
+
 ```bash
 # システムの更新
 sudo apt update && sudo apt upgrade -y
@@ -47,7 +52,8 @@ sudo chmod +x /usr/local/bin/docker-compose
 newgrp docker
 ```
 
-#### CentOS/RHEL系
+#### CentOS/RHEL 系
+
 ```bash
 # システムの更新
 sudo yum update -y
@@ -72,7 +78,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 ```bash
 # プロジェクトのクローン
-git clone https://github.com/your-organization/excalidraw-board.git
+git clone https://github.com/tkhr-sait/excalidraw-board.git
 cd excalidraw-board
 
 # ブランチの確認（最新の安定版を使用）
@@ -117,6 +123,7 @@ curl http://localhost/health
 ### ファイアウォール設定
 
 #### Ubuntu (ufw)
+
 ```bash
 sudo ufw allow 80/tcp
 sudo ufw allow 22/tcp  # SSH用
@@ -124,15 +131,16 @@ sudo ufw enable
 ```
 
 #### CentOS (firewalld)
+
 ```bash
 sudo firewall-cmd --permanent --add-port=80/tcp
 sudo firewall-cmd --permanent --add-port=22/tcp
 sudo firewall-cmd --reload
 ```
 
-### SSL証明書の設定（オプション）
+### SSL 証明書の設定（オプション）
 
-HTTPS化が必要な場合:
+HTTPS 化が必要な場合:
 
 ```bash
 # Let's Encryptの設定例
@@ -147,13 +155,15 @@ sudo certbot certonly --standalone -d your-domain.com
 
 ### よくある問題
 
-1. **Dockerサービスが起動しない**
+1. **Docker サービスが起動しない**
+
    ```bash
    sudo systemctl status docker
    sudo systemctl restart docker
    ```
 
-2. **ポート80が使用中**
+2. **ポート 80 が使用中**
+
    ```bash
    sudo lsof -i :80
    # 他のWebサーバーを停止

@@ -28,7 +28,7 @@ excalidraw-board は、Excalidraw ライブラリを使用したリアルタイ�
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/your-org/excalidraw-board.git
+git clone https://github.com/tkhr-sait/excalidraw-board.git
 cd excalidraw-board
 
 # 本番環境用デプロイ
@@ -85,9 +85,5 @@ MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
 
 ## サポート
 
-- [Issue 報告](https://github.com/your-org/excalidraw-board/issues)
-- [ディスカッション](https://github.com/your-org/excalidraw-board/discussions)
-
-## 貢献
-
-コントリビューションを歓迎します！詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+- [Issue 報告](https://github.com/tkhr-sait/excalidraw-board/issues)
+- [ディスカッション](https://github.com/tkhr-sait/excalidraw-board/discussions)

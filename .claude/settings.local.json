@@ -30,7 +30,9 @@
       "Bash(docker-compose:*)",
       "Bash(python3:*)",
       "Bash(cat:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(./scripts/final-test.sh:*)",
+      "Bash(/workspace/scripts/final-test.sh:*)"
     ],
     "deny": []
   }
