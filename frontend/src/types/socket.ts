@@ -17,6 +17,13 @@ export interface SceneUpdate {
   collaborators: RoomUser[];
 }
 
+export interface CollaboratorPointer {
+  userId: string;
+  x: number;
+  y: number;
+  username?: string;
+}
+
 export interface SocketEvents {
   // Client -> Server
   'join-room': (data: { roomId: string; username: string }) => void;

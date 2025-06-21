@@ -49,7 +49,7 @@ excalidrawを利用した、リアルタイムコラボレーションをclaude 
 docker を利用可能としたので、@docs/tasks/task-02-docker-setup.mdの検証を再度行ってください
 ```
 
-### task-03
+### task-03 excalidraw integration
 
 - 実施＆検証
 
@@ -73,4 +73,40 @@ excalidrawのcssが適用されていないので確認
 
 ```
 @docs/tasks/task-03-excalidraw-integration.md の検証項目・成果物を確認し、対応状況を更新してください
+```
+
+### task-04 socketio client
+
+- 実施＆検証
+
+```
+@docs/tasks/task-04-socketio-client.md を実施後、検証項目を確認し、対応状況を更新してください
+```
+
+### task-05 collaboration component
+
+- 実施＆検証
+
+```
+@docs/tasks/task-05-collaboration-component.md を実施後、検証項目を確認し、対応状況を更新してください
+```
+
+- e2e スキップされてたので追加指示
+
+```
+excalidraw-roomをdocker compose起動し、e2eテストも実施してください
+```
+
+- ドキュメント更新
+
+```
+@docs/tasks/task-05-collaboration-component.md の検証項目を確認し、対応状況を更新してください
+```
+
+### task-06 realtime sync
+
+- 実施＆検証
+
+```
+@docs/tasks/task-06-realtime-sync.md を実施後、検証項目を確認し、対応状況を更新してください
 ```
