@@ -1,12 +1,20 @@
 # excalidraw-board
 
-## ⚠⚠⚠ 注意！現時点ではコラボレーション機能は動きません！ ⚠⚠⚠
-
 claude code で作成した、セルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーション
 
 - [プロンプト](/docs/develop/prompt.md)
 - [生成された計画](/docs/develop/plan.md)
 - [実施したタスク](/docs/develop/tasks/)
+
+- おためし起動
+
+```sh
+git clone https://github.com/tkhr-sait/excalidraw-board.git
+cd excalidraw-board
+
+docker compose -f docker/docker-compose.yml up
+# http://localhost:3000 にアクセス
+```
 
 ![](/docs/images/excalidraw-board.png)
 

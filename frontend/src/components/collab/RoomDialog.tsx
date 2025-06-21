@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import type { RoomFormData } from '../../types/collaboration';
+import { generateRandomRoomName, getOrCreateUsername, saveUsername } from '../../utils/random-names';
 import './RoomDialog.css';
 
 interface RoomDialogProps {
@@ -22,11 +23,23 @@ export function RoomDialog({
     username: '',
   });
 
+  // ダイアログが開かれた時に値を設定
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        roomId: formData.roomId || generateRandomRoomName(),
+        username: formData.username || getOrCreateUsername(),
+      });
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (formData.roomId.trim() && formData.username.trim()) {
+      // ユーザー名を保存
+      saveUsername(formData.username.trim());
       onJoin(formData);
     }
   };
