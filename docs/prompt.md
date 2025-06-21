@@ -126,3 +126,17 @@ excalidraw-roomをdocker compose起動し、e2eテストも実施してくださ
 ```
 @docs/tasks/task-08-e2e-tests.md の検証項目を確認し、対応状況を更新してください
 ```
+
+### task-09 performance optimization
+
+- 実施＆検証
+
+```
+@docs/tasks/task-09-performance-optimization.md の検証項目を確認し、対応状況を更新してください
+```
+
+- 一部未対応だが許容する
+  ```
+  5. ⚠️ バンドル解析ツール (vite.config.tsに設定要、但し現状でもバンドル分析は可能)
+  6. ⚠️ メモリプロファイリングスクリプト (puppeteerベースの専用スクリプト未実装)
+  ```
