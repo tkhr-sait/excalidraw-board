@@ -28,7 +28,8 @@
       "Bash(touch:*)",
       "Bash(docker:*)",
       "Bash(docker-compose:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

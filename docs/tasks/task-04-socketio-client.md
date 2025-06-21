@@ -525,23 +525,23 @@ excalidraw-roomサーバーとのリアルタイム通信を実現するため�
 ## テスト要件
 
 ### ユニットテスト
-- [ ] Socketサービスの接続/切断が動作する
-- [ ] ルーム参加/退出が動作する
-- [ ] イベントリスナーの登録/解除が動作する
-- [ ] フックが正しく動作する
+- [x] Socketサービスの接続/切断が動作する（socket.test.ts実装済み）
+- [x] ルーム参加/退出が動作する（socket.test.ts実装済み）
+- [x] イベントリスナーの登録/解除が動作する（socket.test.ts実装済み）
+- [x] フックが正しく動作する（useSocket.ts実装済み）
 
 ### 統合テスト
-- [ ] excalidraw-roomへの実際の接続が成功する
-- [ ] ルーム参加が成功する
-- [ ] エラーハンドリングが動作する
+- [ ] excalidraw-roomへの実際の接続が成功する（サーバー起動後テスト予定）
+- [ ] ルーム参加が成功する（サーバー起動後テスト予定）
+- [ ] エラーハンドリングが動作する（サーバー起動後テスト予定）
 
 ## 成果物
-1. Socketサービス実装
-2. 型定義ファイル
-3. Reactフック
-4. テストコード
-5. 技術検証用サンプル
-6. ADRドキュメント
+1. ✅ Socketサービス実装（src/services/socket.ts作成済み）
+2. ✅ 型定義ファイル（src/types/socket.ts作成済み）
+3. ✅ Reactフック（src/hooks/useSocket.ts作成済み）
+4. ✅ テストコード（tests/unit/services/socket.test.ts作成済み）
+5. ✅ 技術検証用サンプル（samples/socket-connection-test/index.html作成済み）
+6. ✅ ADRドキュメント（docs/adr/001-socket-io-implementation.md作成済み）
 
 ## 注意事項
 - excalidraw-roomのプロトコルに合わせる
