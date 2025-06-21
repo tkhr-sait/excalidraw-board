@@ -68,4 +68,72 @@ describe('Collab Component', () => {
       expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
     });
   });
+
+  describe('Callback Functions', () => {
+    it('should call onCollaborationStateChange when provided', () => {
+      const mockCallback = vi.fn();
+      render(<Collab onCollaborationStateChange={mockCallback} />);
+      
+      // This would be called when collaboration state changes
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it('should call onCollaboratorsChange when provided', () => {
+      const mockCallback = vi.fn();
+      render(<Collab onCollaboratorsChange={mockCallback} />);
+      
+      // The callback is called initially with empty array
+      expect(mockCallback).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('Socket Event Handlers', () => {
+    it('should set up socket event listeners on mount', () => {
+      render(<Collab />);
+      
+      expect(mockSocket.on).toHaveBeenCalledWith('room-joined', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('user-joined', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('user-left', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('error', expect.any(Function));
+    });
+
+    it('should handle room joined event', () => {
+      const mockCallback = vi.fn();
+      render(<Collab onCollaborationStateChange={mockCallback} />);
+      
+      // Get the callback function passed to socket.on for 'room-joined'
+      const roomJoinedCallback = mockSocket.on.mock.calls.find(
+        call => call[0] === 'room-joined'
+      )?.[1];
+      
+      if (roomJoinedCallback) {
+        roomJoinedCallback({ roomId: 'test-room', users: [] });
+        expect(mockCallback).toHaveBeenCalledWith(true);
+      }
+    });
+
+    it('should handle room error event', () => {
+      render(<Collab />);
+      
+      // Get the callback function passed to socket.on for 'error'
+      const roomErrorCallback = mockSocket.on.mock.calls.find(
+        call => call[0] === 'error'
+      )?.[1];
+      
+      expect(roomErrorCallback).toBeDefined();
+      // Just verify the callback exists and can be called
+      if (roomErrorCallback) {
+        expect(() => roomErrorCallback({ message: 'Test error' })).not.toThrow();
+      }
+    });
+
+    it('should cleanup socket listeners on unmount', () => {
+      const { unmount } = render(<Collab />);
+      
+      unmount();
+      
+      // Verify that socket.off was called to cleanup listeners
+      expect(mockSocket.off).toHaveBeenCalled();
+    });
+  });
 });

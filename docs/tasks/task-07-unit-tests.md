@@ -577,16 +577,63 @@ jobs:
 ## テスト要件
 
 ### カバレッジ目標
-- [ ] ライン80%以上
-- [ ] 関数カバレッジ80%以上
-- [ ] ブランチカバレッジ80%以上
-- [ ] ステートメントカバレッジ80%以上
+- [x] ライン81.28%以上達成 ✅
+- [x] 関数カバレッジ80.85%以上達成 ✅
+- [x] ブランチカバレッジ82.2%以上達成 ✅
+- [x] ステートメントカバレッジ81.28%以上達成 ✅
 
 ### テスト品質
-- [ ] 全テストがパスする
-- [ ] エッジケースのテストが含まれる
-- [ ] エラーハンドリングのテストが含まれる
-- [ ] 非同期処理のテストが含まれる
+- [x] 全テストがパスする（68テスト中68成功） ✅
+- [x] エッジケースのテストが含まれる ✅
+- [x] エラーハンドリングのテストが含まれる ✅
+- [x] 非同期処理のテストが含まれる ✅
+
+## 実装結果
+
+### 1. 完了した設定
+- ✅ vitest.config.ts設定（カバレッジ閾値80%を設定）
+- ✅ tests/setup.ts作成（WebSocket、localStorage、canvas等のモック）
+- ✅ package.jsonスクリプト追加
+- ✅ @vitest/coverage-v8インストール
+
+### 2. 作成されたテストファイル
+- ✅ tests/unit/utils/storage.test.ts（ストレージユーティリティ）
+- ✅ tests/unit/hooks/useSocket.test.tsx（カスタムフック）
+- ✅ tests/unit/utils/throttle.test.ts（スロットルユーティリティ）
+- ✅ tests/unit/components/collab/CollabToolbar.test.tsx（ツールバーコンポーネント）
+- ✅ tests/unit/components/collab/CollaboratorsList.test.tsx（コラボレーターリスト）
+- ✅ tests/unit/components/Collab.test.tsx（メインコラボコンポーネント）
+- ✅ tests/unit/components/App.test.tsx（アプリコンポーネント）
+- ✅ tests/unit/main.test.tsx（エントリーポイント）
+- ✅ tests/unit/services/socket.test.ts（ソケットサービス）
+- ✅ tests/unit/services/sync.test.ts（同期サービス）
+
+### 3. カバレッジ結果（最終）
+```
+All files          |   81.28 |     82.2 |   80.85 |   81.28 |
+ src               |   68.04 |     62.5 |      25 |   68.04 |
+  App.tsx          |   66.03 |     62.5 |      25 |   66.03 |
+  main.tsx         |     100 |      100 |     100 |     100 |
+ ...ponents/collab |   83.81 |    85.36 |   81.81 |   83.81 |
+  Collab.tsx       |   69.56 |    76.47 |      60 |   69.56 |
+  ...abToolbar.tsx |     100 |      100 |     100 |     100 |
+  ...atorsList.tsx |     100 |      100 |     100 |     100 |
+  RoomDialog.tsx   |    96.1 |    83.33 |     100 |    96.1 |
+ src/hooks         |   89.15 |    85.71 |     100 |   89.15 |
+  useSocket.ts     |   89.15 |    85.71 |     100 |   89.15 |
+ src/services      |   80.17 |       75 |   83.33 |   80.17 |
+  socket.ts        |   69.09 |    65.21 |   83.33 |   69.09 |
+  sync.ts          |   90.16 |    88.23 |   83.33 |   90.16 |
+ src/utils         |     100 |      100 |     100 |     100 |
+  storage.ts       |     100 |      100 |     100 |     100 |
+  throttle.ts      |     100 |      100 |     100 |     100 |
+```
+
+### 4. テスト統計
+- **テストファイル数**: 12個
+- **総テスト数**: 68個
+- **成功率**: 100%（68/68成功）
+- **テスト実行時間**: 約1.25秒
 
 ## 成果物
 1. 完全なユニットテストスイート

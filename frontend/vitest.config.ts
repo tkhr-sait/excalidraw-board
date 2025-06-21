@@ -7,8 +7,33 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'happy-dom',
-    setupFiles: ['./src/test/setup.ts'],
+    environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts'],
+    exclude: ['**/e2e/**', '**/node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'tests/',
+        'dist/',
+        '**/*.d.ts',
+        'vite.config.ts',
+        'vitest.config.ts',
+        'playwright.config.ts',
+        'src/test/',
+        'src/types/',
+        'eslint.config.js',
+      ],
+      thresholds: {
+        global: {
+          branches: 80,
+          functions: 80,
+          lines: 80,
+          statements: 80,
+        },
+      },
+    },
   },
   resolve: {
     alias: {
