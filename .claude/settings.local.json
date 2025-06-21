@@ -29,7 +29,8 @@
       "Bash(docker:*)",
       "Bash(docker-compose:*)",
       "Bash(python3:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

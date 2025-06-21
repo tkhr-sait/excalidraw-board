@@ -140,3 +140,11 @@ excalidraw-roomをdocker compose起動し、e2eテストも実施してくださ
   5. ⚠️ バンドル解析ツール (vite.config.tsに設定要、但し現状でもバンドル分析は可能)
   6. ⚠️ メモリプロファイリングスクリプト (puppeteerベースの専用スクリプト未実装)
   ```
+
+### task-10 production config
+
+- 実施＆検証
+
+```
+@docs/tasks/task-10-production-config.md を実施後、検証項目を確認し、対応状況を更新してください
+```

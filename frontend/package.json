@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:prod": "NODE_ENV=production vite build",
     "preview": "vite preview",
     "test": "vitest --config vitest.config.ts",
     "test:ui": "vitest --ui",
@@ -18,7 +19,12 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "deploy:prod": "../scripts/deploy.sh",
+    "monitor:prod": "../scripts/monitor.sh",
+    "logs:prod": "docker-compose -f ../docker/docker-compose.prod.yml logs -f",
+    "stop:prod": "docker-compose -f ../docker/docker-compose.prod.yml down",
+    "restart:prod": "docker-compose -f ../docker/docker-compose.prod.yml restart"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.0",
@@ -45,6 +51,7 @@
     "happy-dom": "^18.0.1",
     "jsdom": "^26.1.0",
     "prettier": "^3.5.3",
+    "terser": "^5.43.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5"
