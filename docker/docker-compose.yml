@@ -6,7 +6,7 @@ services:
     image: excalidraw/excalidraw-room:latest
     container_name: excalidraw-room
     ports:
-      - "3002:80"  # WebSocketサーバー
+      - "3002:3002"  # WebSocketサーバー
     environment:
       - NODE_ENV=development
     networks:

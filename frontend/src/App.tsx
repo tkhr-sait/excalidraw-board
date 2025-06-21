@@ -10,7 +10,9 @@ import type {
   BinaryFiles,
   ExcalidrawImperativeAPI,
 } from './types/excalidraw';
+import type { RoomUser } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
+import { Collab } from './components/collab/Collab';
 import './App.css';
 
 function App() {
@@ -19,7 +21,8 @@ function App() {
     elements: readonly ExcalidrawElement[];
     appState: Partial<AppState>;
   } | null>(null);
-  const [isCollaborating] = useState(false);
+  const [isCollaborating, setIsCollaborating] = useState(false);
+  const [, setCollaborators] = useState<RoomUser[]>([]);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -62,8 +65,23 @@ function App() {
     excalidrawAPIRef.current = api;
   }, []);
 
+  // コラボレーション状態変更のハンドラ
+  const handleCollaborationStateChange = useCallback((collaborating: boolean) => {
+    setIsCollaborating(collaborating);
+  }, []);
+
+  // コラボレーター変更のハンドラ
+  const handleCollaboratorsChange = useCallback((newCollaborators: RoomUser[]) => {
+    setCollaborators(newCollaborators);
+  }, []);
+
   return (
     <div className="app">
+      <Collab
+        onCollaborationStateChange={handleCollaborationStateChange}
+        onCollaboratorsChange={handleCollaboratorsChange}
+      />
+      
       <div className="excalidraw-wrapper" data-testid="excalidraw-canvas">
         <Excalidraw
           initialData={initialData || undefined}
