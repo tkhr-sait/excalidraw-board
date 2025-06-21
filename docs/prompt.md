@@ -118,3 +118,11 @@ excalidraw-roomをdocker compose起動し、e2eテストも実施してくださ
 ```
 @docs/tasks/task-07-unit-tests.md の検証項目を確認し、対応状況を更新してください
 ```
+
+### task-08 e2e tests
+
+- 実施＆検証
+
+```
+@docs/tasks/task-08-e2e-tests.md の検証項目を確認し、対応状況を更新してください
+```
