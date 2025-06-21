@@ -17,3 +17,19 @@ excalidrawを利用した、リアルタイムコラボレーションをclaude 
   - 機能追加などは現時点で計画しない
   - playwrightをheadlessで利用
 ```
+
+## タスク実行
+
+### task-01 project setup
+
+- 実施
+
+```
+@docs/tasks/task-01-project-setup.md
+```
+
+- 検証
+
+```
+@docs/tasks/task-01-project-setup.md の検証項目を確認し、対応状況を更新してください
+```

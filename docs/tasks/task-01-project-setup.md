@@ -120,10 +120,10 @@ frontend/
 3. ビルドが成功すること
 
 ### 検証項目
-- [ ] `pnpm dev`で開発サーバーが起動する
-- [ ] `pnpm build`でビルドが成功する
-- [ ] `pnpm test`でテストが実行される
-- [ ] `pnpm lint`でリントが実行される
+- [x] `npm dev`で開発サーバーが起動する (http://localhost:3000)
+- [x] `npm build`でビルドが成功する
+- [x] `npm test`でテストが実行される
+- [x] `npm lint`でリントが実行される
 
 ## 成果物
 1. 設定済みのfrontendディレクトリ
