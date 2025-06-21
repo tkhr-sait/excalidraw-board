@@ -1,6 +1,14 @@
 # excalidraw-board
 
-セルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーション
+## ⚠⚠⚠ 注意！現時点ではコラボレーション機能は動きません！ ⚠⚠⚠
+
+claude code で作成した、セルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーション
+
+- [プロンプト](/docs/develop/prompt.md)
+- [生成された計画](/docs/develop/plan.md)
+- [実施したタスク](/docs/develop/tasks/)
+
+![](/docs/images/excalidraw-board.png)
 
 ## 概要
 
