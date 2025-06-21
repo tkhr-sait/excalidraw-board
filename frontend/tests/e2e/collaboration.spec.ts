@@ -114,6 +114,78 @@ test.describe('Collaboration Features', () => {
   });
 });
 
+test.describe('Realtime Sync Debug', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Wait for the application to load
+    await expect(page.locator('[data-testid="excalidraw-canvas"]')).toBeVisible();
+  });
+
+  test('should debug sync issues and console errors', async ({ page }) => {
+    // Capture all console messages
+    const consoleMessages = [];
+    page.on('console', msg => {
+      consoleMessages.push({
+        type: msg.type(),
+        text: msg.text(),
+      });
+    });
+
+    // Capture network failures
+    const networkErrors = [];
+    page.on('requestfailed', request => {
+      networkErrors.push({
+        url: request.url(),
+        failure: request.failure()
+      });
+    });
+
+    // Wait for page to fully load and socket connections
+    await page.waitForTimeout(5000);
+
+    // Try to join a room to trigger collaboration code
+    const joinButton = page.locator('button:has-text("Join Room")');
+    if (await joinButton.isVisible()) {
+      await joinButton.click({ force: true });
+      await page.fill('input[placeholder="Enter room ID"]', 'debug-room');
+      await page.fill('input[placeholder="Enter your name"]', 'DebugUser');
+      await page.click('button[type="submit"]:has-text("Join")');
+      await page.waitForTimeout(3000);
+    }
+
+    // Output all captured information
+    console.log('\n=== CONSOLE MESSAGES ===');
+    consoleMessages.forEach(msg => {
+      console.log(`[${msg.type.toUpperCase()}] ${msg.text}`);
+    });
+
+    console.log('\n=== NETWORK ERRORS ===');
+    networkErrors.forEach(error => {
+      console.log(`FAILED: ${error.url} - ${error.failure?.errorText || 'Unknown error'}`);
+    });
+
+    // Check for specific sync-related issues
+    const syncLogs = consoleMessages.filter(msg => 
+      msg.text.includes('sync') || 
+      msg.text.includes('collaboration') ||
+      msg.text.includes('socket') ||
+      msg.text.includes('WebSocket') ||
+      msg.text.includes('room') ||
+      msg.text.includes('broadcast') ||
+      msg.text.includes('encrypt')
+    );
+    
+    console.log('\n=== SYNC-RELATED LOGS ===');
+    syncLogs.forEach(msg => console.log(`[${msg.type.toUpperCase()}] ${msg.text}`));
+
+    // Check for errors specifically
+    const errors = consoleMessages.filter(msg => msg.type === 'error');
+    console.log(`\n=== FOUND ${errors.length} ERRORS ===`);
+    errors.forEach(error => console.log(`ERROR: ${error.text}`));
+  });
+});
+
 test.describe('Realtime Sync Features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');

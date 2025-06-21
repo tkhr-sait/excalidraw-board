@@ -1,34 +1,38 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     // Bundle analyzer for production builds
-    ...(process.env.ANALYZE === 'true' ? [
-      {
-        name: 'bundle-analyzer',
-        generateBundle() {
-          import('rollup-plugin-visualizer').then(({ visualizer }) => {
-            visualizer({
-              filename: 'dist/stats.html',
-              open: true,
-              gzipSize: true,
-              brotliSize: true,
-            })
-          })
-        }
-      }
-    ] : [])
+    ...(process.env.ANALYZE === 'true'
+      ? [
+          {
+            name: 'bundle-analyzer',
+            generateBundle() {
+              import('rollup-plugin-visualizer').then(({ visualizer }) => {
+                visualizer({
+                  filename: 'dist/stats.html',
+                  open: true,
+                  gzipSize: true,
+                  brotliSize: true,
+                });
+              });
+            },
+          },
+        ]
+      : []),
   ],
   server: {
     port: 3000,
+    host: '0.0.0.0',
     proxy: {
       '/socket.io': {
-        target: 'ws://localhost:3001',
+        target: 'ws://localhost:3002',
         ws: true,
+        changeOrigin: true,
       },
     },
   },
@@ -40,9 +44,9 @@ export default defineConfig({
       '@/utils': path.resolve(__dirname, './src/utils'),
       '@/types': path.resolve(__dirname, './src/types'),
       'roughjs/bin/rough': path.resolve(
-          __dirname,
-          './node_modules/roughjs/bin/rough.js'
-        ),
+        __dirname,
+        './node_modules/roughjs/bin/rough.js'
+      ),
     },
   },
   build: {
@@ -77,4 +81,4 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
-})
+});

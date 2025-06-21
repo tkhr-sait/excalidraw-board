@@ -1,11 +1,17 @@
 import io from 'socket.io-client';
-import type { SocketEvents, SocketEventName } from '../types/socket';
+import type { SocketEvents, SocketEventName, SocketUpdateData } from '../types/socket';
+import { WS_EVENTS } from '../types/socket';
+import { EncryptionUtils } from '../utils/encryption';
 
 export class SocketService {
-  private socket: any | null = null;
+  public socket: any | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout: NodeJS.Timeout | null = null;
+  private roomId: string | null = null;
+  private roomKey: string | null = null;
+  private socketInitialized: boolean = false;
+  private broadcastedElementVersions: Map<string, number> = new Map();
 
   connect(url: string): void {
     if (this.socket?.connected) {
@@ -35,6 +41,11 @@ export class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
+    
+    this.roomId = null;
+    this.roomKey = null;
+    this.socketInitialized = false;
+    this.broadcastedElementVersions.clear();
   }
 
   isConnected(): boolean {
@@ -46,7 +57,13 @@ export class SocketService {
       throw new Error('Socket not connected');
     }
 
+    this.roomId = roomId;
     this.emit('join-room', { roomId, username });
+    
+    // Save username to localStorage when joining
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('excalidraw-collab-username', username);
+    }
   }
 
   leaveRoom(roomId: string): void {
@@ -55,6 +72,10 @@ export class SocketService {
     }
 
     this.emit('leave-room', { roomId });
+    this.roomId = null;
+    this.roomKey = null;
+    this.socketInitialized = false;
+    this.broadcastedElementVersions.clear();
   }
 
   emit<K extends SocketEventName>(
@@ -135,6 +156,65 @@ export class SocketService {
       console.error('Max reconnection attempts reached');
       // ここでユーザーに通知するイベントを発行できる
     }
+  }
+
+  async broadcastEncryptedData(
+    data: SocketUpdateData,
+    volatile: boolean = false,
+    roomId?: string
+  ): Promise<void> {
+    if (!this.isOpen() || !this.roomKey) {
+      console.error('Cannot broadcast: Socket not initialized or no room key');
+      return;
+    }
+
+    try {
+      const json = JSON.stringify(data);
+      const encoded = new TextEncoder().encode(json);
+      const { encryptedBuffer, iv } = await EncryptionUtils.encryptData(this.roomKey, encoded);
+
+      this.socket?.emit(
+        volatile ? WS_EVENTS.SERVER_VOLATILE : WS_EVENTS.SERVER,
+        roomId ?? this.roomId,
+        encryptedBuffer,
+        iv
+      );
+    } catch (error) {
+      console.error('Failed to broadcast encrypted data:', error);
+    }
+  }
+
+  async generateRoomKey(): Promise<string> {
+    return await EncryptionUtils.generateKey();
+  }
+
+  setRoomKey(key: string): void {
+    this.roomKey = key;
+  }
+
+  isOpen(): boolean {
+    return !!(
+      this.socketInitialized &&
+      this.socket &&
+      this.roomId &&
+      this.roomKey
+    );
+  }
+
+  markSocketInitialized(): void {
+    this.socketInitialized = true;
+  }
+
+  getBroadcastedElementVersion(elementId: string): number | undefined {
+    return this.broadcastedElementVersions.get(elementId);
+  }
+
+  setBroadcastedElementVersion(elementId: string, version: number): void {
+    this.broadcastedElementVersions.set(elementId, version);
+  }
+
+  clearBroadcastedElements(): void {
+    this.broadcastedElementVersions.clear();
   }
 }
 
