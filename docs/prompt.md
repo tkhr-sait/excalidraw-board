@@ -33,3 +33,18 @@ excalidrawを利用した、リアルタイムコラボレーションをclaude 
 ```
 @docs/tasks/task-01-project-setup.md の検証項目を確認し、対応状況を更新してください
 ```
+
+### task-02 docker setup
+
+- 実施＆検証
+
+```
+@docs/tasks/task-02-docker-setup.md を実施後、検証項目を確認し、対応状況を更新してください
+```
+
+- docker が利用不可の状態で実施＆検証したところ、検証スキップされてしまったので docker 環境構築してリトライ
+  - devcontainer で `features: docker-in-docker` を指定するだけ
+
+```
+docker を利用可能としたので、@docs/tasks/task-02-docker-setup.mdの検証を再度行ってください
+```
