@@ -1,34 +1,104 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import {
+  Excalidraw,
+  MainMenu,
+  WelcomeScreen,
+} from '@excalidraw/excalidraw';
+import type {
+  ExcalidrawElement,
+  AppState,
+  BinaryFiles,
+  ExcalidrawImperativeAPI,
+} from './types/excalidraw';
+import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
+  const [initialData, setInitialData] = useState<{
+    elements: readonly ExcalidrawElement[];
+    appState: Partial<AppState>;
+  } | null>(null);
+  const [isCollaborating] = useState(false);
+
+  // Excalidraw APIの参照を保持
+  const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
+
+  // 初期データの読み込み
+  useEffect(() => {
+    const savedData = loadFromLocalStorage();
+    if (savedData) {
+      setInitialData({
+        elements: savedData.elements,
+        appState: {
+          ...savedData.appState,
+          collaborators: new Map(),
+        },
+      });
+    } else {
+      setInitialData({
+        elements: [],
+        appState: {
+          collaborators: new Map(),
+        },
+      });
+    }
+  }, []);
+
+  // シーン変更のハンドラ
+  const handleChange = useCallback(
+    (elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
+      // コラボレーションモードでない場合のみローカルに保存
+      if (!isCollaborating) {
+        saveToLocalStorage({ elements, appState, files });
+      }
+    },
+    [isCollaborating]
+  );
+
+  // Excalidrawコンポーネントがマウントされたとき
+  const handleExcalidrawMount = useCallback((api: ExcalidrawImperativeAPI) => {
+    setExcalidrawAPI(api);
+    excalidrawAPIRef.current = api;
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="app">
+      <div className="excalidraw-wrapper" data-testid="excalidraw-canvas">
+        <Excalidraw
+          initialData={initialData || undefined}
+          onChange={handleChange}
+          excalidrawAPI={handleExcalidrawMount}
+          langCode="ja"
+          theme="light"
+          name="Excalidraw Board"
+          UIOptions={{
+            canvasActions: {
+              loadScene: true,
+              saveToActiveFile: true,
+              export: {
+                saveFileToDisk: true,
+              },
+              toggleTheme: true,
+            },
+          }}
+        >
+          <MainMenu>
+            <MainMenu.DefaultItems.LoadScene />
+            <MainMenu.DefaultItems.SaveToActiveFile />
+            <MainMenu.DefaultItems.Export />
+            <MainMenu.Separator />
+            <MainMenu.DefaultItems.ToggleTheme />
+            <MainMenu.DefaultItems.ChangeCanvasBackground />
+          </MainMenu>
+          <WelcomeScreen>
+            <WelcomeScreen.Hints.MenuHint />
+            <WelcomeScreen.Hints.ToolbarHint />
+            <WelcomeScreen.Hints.HelpHint />
+          </WelcomeScreen>
+        </Excalidraw>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    </div>
   );
 }
 

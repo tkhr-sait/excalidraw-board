@@ -48,3 +48,29 @@ excalidrawを利用した、リアルタイムコラボレーションをclaude 
 ```
 docker を利用可能としたので、@docs/tasks/task-02-docker-setup.mdの検証を再度行ってください
 ```
+
+### task-03
+
+- 実施＆検証
+
+```
+@docs/tasks/task-03-excalidraw-integration.md の検証項目を確認し、対応状況を更新してください
+```
+
+- 画面確認したところ、レイアウトがおかしい
+
+```
+excalidrawのcssが適用されていないので確認
+```
+
+- 修正後確認しようとしたが、画面真っ白。ブラウザのコンソールにエラーがあった
+
+```
+ ブラウザアクセスしたところエラー。playwrightで動作確認、エラーログ確認し、解消してください
+```
+
+- @docs/tasks/task-03-excalidraw-integration.md が更新されていなかったので、再度指示
+
+```
+@docs/tasks/task-03-excalidraw-integration.md の検証項目・成果物を確認し、対応状況を更新してください
+```
