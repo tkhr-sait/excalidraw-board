@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(ss:*)",
+      "WebFetch(domain:excalidraw.com)",
+      "Bash(mv:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(grep:*)",
+      "Bash(rm:*)",
+      "Bash(pkill:*)",
+      "Bash(cp:*)",
+      "Bash(true)",
+      "Bash(pgrep:*)",
+      "Bash(curl:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(killall:*)",
+      "Bash(node:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(pnpm init:*)",
+      "Bash(touch:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(chmod:*)",
+      "Bash(./scripts/final-test.sh:*)",
+      "Bash(/workspace/scripts/final-test.sh:*)"
+    ],
+    "deny": []
+  }
+}

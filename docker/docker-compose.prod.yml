@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Excalidraw Roomサーバー
+  excalidraw-room:
+    image: excalidraw/excalidraw-room:latest
+    container_name: excalidraw-room-prod
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - excalidraw-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # フロントエンドアプリケーション
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend.prod
+    container_name: excalidraw-frontend-prod
+    ports:
+      - "80:8080"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - excalidraw-network
+    depends_on:
+      - excalidraw-room
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ログ集約（オプション）
+  log-aggregator:
+    image: fluent/fluent-bit:latest
+    container_name: log-aggregator
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - excalidraw-network
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - excalidraw-room
+
+  # メトリクス監視（オプション）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - excalidraw-network
+    restart: unless-stopped
+
+networks:
+  excalidraw-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  prometheus_data:

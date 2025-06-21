@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Excalidraw Roomサーバー
+  excalidraw-room:
+    image: excalidraw/excalidraw-room:latest
+    container_name: excalidraw-room
+    ports:
+      - "3002:3002"  # WebSocketサーバー
+    environment:
+      - NODE_ENV=development
+    networks:
+      - excalidraw-network
+    restart: unless-stopped
+
+  # フロントエンド開発サーバー
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend.dev
+    container_name: excalidraw-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_WEBSOCKET_SERVER_URL=http://localhost:3002
+    networks:
+      - excalidraw-network
+    depends_on:
+      - excalidraw-room
+    command: npm run dev -- --host
+
+networks:
+  excalidraw-network:
+    driver: bridge

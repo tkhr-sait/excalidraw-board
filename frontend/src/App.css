@@ -1,0 +1,30 @@
+.app {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.excalidraw-wrapper {
+  height: 100%;
+  width: 100%;
+}
+
+/* Excalidrawコンポーネントのカスタマイズ */
+.excalidraw {
+  --color-primary: #5b5bd6;
+  --color-primary-darker: #4a4ad4;
+  --color-primary-darkest: #3939d2;
+}
+
+/* コラボレーションモードのインジケータ */
+.collaboration-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background: #4a9eff;
+  color: white;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 10;
+}
