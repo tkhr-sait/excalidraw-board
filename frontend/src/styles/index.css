@@ -23,7 +23,7 @@
   }
   
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
   }
   
   .btn-secondary {
@@ -33,7 +33,7 @@
 
 /* Excalidraw overrides */
 .excalidraw {
-  --color-primary: theme('colors.primary.600');
-  --color-primary-darker: theme('colors.primary.700');
-  --color-primary-darkest: theme('colors.primary.800');
+  --color-primary: theme('colors.blue.600');
+  --color-primary-darker: theme('colors.blue.700');
+  --color-primary-darkest: theme('colors.blue.800');
 }
