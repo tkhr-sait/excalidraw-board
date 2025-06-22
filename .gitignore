@@ -97,3 +97,13 @@ Desktop.ini
 # Development tools
 .vercel/
 .netlify/
+
+# Backend data
+backend/data/
+data/
+
+# Docker
+.dockerignore
+
+# Sample data
+samples/websocket-client/node_modules/

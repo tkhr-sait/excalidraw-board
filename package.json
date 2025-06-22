@@ -1,0 +1,33 @@
+{
+  "name": "excalidraw-board",
+  "version": "1.0.0",
+  "description": "Excalidraw-based collaborative drawing board",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "docker-compose up backend",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "cd frontend && npm run test",
+    "test:e2e": "cd tests && npx playwright test",
+    "lint": "npm run lint:frontend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "typecheck": "npm run typecheck:frontend",
+    "typecheck:frontend": "cd frontend && npm run typecheck",
+    "setup": "./scripts/setup.sh",
+    "clean": "rm -rf frontend/node_modules frontend/dist tests/node_modules"
+  },
+  "workspaces": [
+    "frontend",
+    "tests"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# パッケージファイルをコピー
+COPY package*.json ./
+
+# 依存関係のインストール
+RUN npm ci
+
+# ソースコードをコピー
+COPY . .
+
+# 開発サーバーを起動
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host"]
