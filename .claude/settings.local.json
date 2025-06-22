@@ -8,7 +8,6 @@
       "Bash(npx:*)",
       "Bash(npm:*)",
       "Bash(ss:*)",
-      "WebFetch(domain:excalidraw.com)",
       "Bash(mv:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
@@ -23,7 +22,6 @@
       "Bash(killall:*)",
       "Bash(node:*)",
       "Bash(timeout:*)",
-      "WebFetch(domain:github.com)",
       "Bash(pnpm init:*)",
       "Bash(touch:*)",
       "Bash(docker:*)",
@@ -32,7 +30,11 @@
       "Bash(cat:*)",
       "Bash(chmod:*)",
       "Bash(./scripts/final-test.sh:*)",
-      "Bash(/workspace/scripts/final-test.sh:*)"
+      "Bash(/workspace/scripts/final-test.sh:*)",
+      "WebFetch(domain:excalidraw.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:hub.docker.com)",
+      "Bash(git clone:*)"
     ],
     "deny": []
   }
