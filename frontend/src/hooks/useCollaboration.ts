@@ -9,7 +9,7 @@ import {
 } from '../stores/atoms/boardAtoms';
 import { websocketService, WebSocketCallbacks } from '../services/websocket';
 
-const WEBSOCKET_URL = 'http://localhost:3002';
+const WEBSOCKET_URL = window.location.origin; // Use same origin as frontend
 
 export function useCollaboration(roomId: string) {
   const [connectionStatus, setConnectionStatus] = useAtom(connectionStatusAtom);
@@ -147,7 +147,6 @@ export function useCollaboration(roomId: string) {
     if (websocketService.isConnected()) {
       websocketService.sendSceneUpdate(newElements, newAppState);
       lastUpdateRef.current = { elements: newElements, appState: newAppState };
-      console.log('📤 Scene update sent:', newElements.length, 'elements');
     }
   }, []); // Remove setElements and setAppState dependencies to prevent loops
 

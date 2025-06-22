@@ -22,10 +22,11 @@ export class WebSocketService {
     this.callbacks = callbacks;
 
     this.socket = io(url, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       autoConnect: true,
-      timeout: 5000,
-      forceNew: true
+      timeout: 10000,
+      forceNew: true,
+      path: '/socket.io/'
     });
 
     this.setupEventHandlers();
@@ -50,22 +51,21 @@ export class WebSocketService {
 
   sendSceneUpdate(elements: any[], appState: any) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit('scene-update', {
-        elements,
-        appState,
-        roomId: this.roomId,
-        timestamp: Date.now()
-      });
+      // Use excalidraw-room compatible format
+      // Send elements and appState as separate parameters
+      this.socket.emit('server-broadcast', elements, appState);
     }
   }
 
   sendCursorUpdate(x: number, y: number) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit('cursor-update', {
-        x,
-        y,
-        roomId: this.roomId,
-        timestamp: Date.now()
+      // Use excalidraw-room compatible event format
+      this.socket.emit('server-volatile-broadcast', {
+        type: 'MOUSE_LOCATION',
+        payload: {
+          x,
+          y
+        }
       });
     }
   }
@@ -128,9 +128,13 @@ export class WebSocketService {
     });
 
     // Collaboration events
-    this.socket.on('scene-update', (data: { elements: any[], appState: any, fromUserId: string }) => {
-      console.log('🎨 Scene update received from:', data.fromUserId);
-      this.callbacks.onSceneUpdate?.(data.elements, data.appState);
+    this.socket.on('client-broadcast', (appState: any, elements: any[]) => {
+      // Handle the case where elements might be null/undefined
+      const safeElements = elements || [];
+      
+      if (appState) {
+        this.callbacks.onSceneUpdate?.(safeElements, appState);
+      }
     });
 
     this.socket.on('cursor-update', (data: { x: number, y: number, fromUserId: string }) => {
@@ -140,7 +144,7 @@ export class WebSocketService {
 
     // Generic event logger
     this.socket.onAny((eventName: string, ...args: any[]) => {
-      if (!['room-user-change', 'scene-update', 'cursor-update'].includes(eventName)) {
+      if (!['room-user-change', 'client-broadcast', 'cursor-update'].includes(eventName)) {
         console.log(`📨 WebSocket event: ${eventName}`, args);
       }
     });

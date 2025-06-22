@@ -32,6 +32,7 @@ const CollaborativeBoard: React.FC = () => {
     sendSceneUpdate([...newElements], newAppState);
   };
 
+
   const getConnectionStatus = () => {
     if (isConnected) return 'Connected';
     if (isConnecting) return 'Connecting';
