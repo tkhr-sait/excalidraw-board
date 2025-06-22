@@ -2,7 +2,7 @@ import { io } from 'socket.io-client';
 
 console.log('Starting WebSocket client test...');
 
-const socket = io('http://localhost:3003', {
+const socket = io('http://localhost:3002', {
   transports: ['websocket'],
   autoConnect: true,
   timeout: 5000
