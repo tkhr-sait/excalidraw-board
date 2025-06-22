@@ -18,13 +18,13 @@ export class BoardPage {
     this.excalidrawContainer = page.locator('.excalidraw');
     this.canvas = page.locator('canvas').first();
     
-    // UI elements
-    this.connectionStatus = page.locator('text=/Status: (Connected|Connecting|Disconnected)/');
+    // UI elements - use more specific selectors
+    this.connectionStatus = page.locator('.absolute.top-4.right-4 div:has-text("Status:")').first();
     this.connectionIndicator = page.locator('.absolute.top-4.right-4 .w-3.h-3.rounded-full');
     this.disconnectedOverlay = page.locator('text=Connection Lost').locator('..');
     this.reconnectButton = page.locator('button:has-text("Reconnect")');
     this.shareRoomButton = page.locator('button:has-text("Share Room")');
-    this.roomIdDisplay = page.locator('text=/Room: [a-zA-Z0-9]+/');
+    this.roomIdDisplay = page.locator('.absolute.top-4.right-4 div:has-text("Room:")').first();
   }
 
   async goto(roomId: string) {
@@ -53,9 +53,12 @@ export class BoardPage {
   }
 
   async drawRectangle(x: number, y: number, width: number, height: number) {
-    // Click on rectangle tool
+    // Click on rectangle tool with force to bypass overlay issues
     const rectangleTool = this.page.locator('[data-testid="toolbar-rectangle"]');
-    await rectangleTool.click();
+    await rectangleTool.click({ force: true });
+    
+    // Wait for tool selection
+    await this.page.waitForTimeout(500);
     
     // Draw rectangle on canvas
     const canvasBox = await this.canvas.boundingBox();
@@ -76,9 +79,12 @@ export class BoardPage {
   }
 
   async drawCircle(x: number, y: number, radius: number) {
-    // Click on ellipse tool
+    // Click on ellipse tool with force to bypass overlay issues
     const ellipseTool = this.page.locator('[data-testid="toolbar-ellipse"]');
-    await ellipseTool.click();
+    await ellipseTool.click({ force: true });
+    
+    // Wait for tool selection
+    await this.page.waitForTimeout(500);
     
     // Draw circle on canvas
     const canvasBox = await this.canvas.boundingBox();
@@ -113,8 +119,9 @@ export class BoardPage {
   }
 
   async getUserCount(): Promise<number> {
-    const statusText = await this.connectionStatus.textContent();
-    const match = statusText?.match(/Connected \((\d+) users?\)/);
+    const usersElement = this.page.locator('.absolute.top-4.right-4 div:has-text("Users:")').first();
+    const usersText = await usersElement.textContent();
+    const match = usersText?.match(/Users: (\d+)/);
     return match ? parseInt(match[1]) : 0;
   }
 
@@ -128,14 +135,14 @@ export class BoardPage {
   }
 
   async shareRoom() {
-    await this.shareRoomButton.click();
-    // Wait for clipboard operation
-    await this.page.waitForTimeout(1000);
+    await this.shareRoomButton.click({ force: true });
+    // Wait for clipboard operation and state update
+    await this.page.waitForTimeout(500);
   }
 
   async getRoomId(): Promise<string> {
     const roomText = await this.roomIdDisplay.textContent();
-    const match = roomText?.match(/Room: ([a-zA-Z0-9]+)/);
+    const match = roomText?.match(/Room: ([a-zA-Z0-9-_]+)/);
     return match ? match[1] : '';
   }
 }

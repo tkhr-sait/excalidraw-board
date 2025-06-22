@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useAtom } from 'jotai';
 import { 
   connectionStatusAtom, 
@@ -17,74 +17,103 @@ export function useCollaboration(roomId: string) {
   const [connectedUsers, setConnectedUsers] = useAtom(connectedUsersAtom);
   const [elements, setElements] = useAtom(elementsAtom);
   const [appState, setAppState] = useAtom(appStateAtom);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   const lastUpdateRef = useRef<{ elements: any[], appState: any } | null>(null);
   const isReceivingUpdateRef = useRef(false);
 
-  // WebSocket callbacks
-  const callbacks: WebSocketCallbacks = {
-    onConnect: () => {
-      setConnectionStatus('connected');
-      console.log('🔗 Collaboration connected');
-    },
+  // WebSocket callbacks (memoized to prevent infinite loops)
+  const onConnect = useCallback(() => {
+    setConnectionStatus('connected');
+    console.log('🔗 Collaboration connected');
+  }, [setConnectionStatus]);
+  
+  const onDisconnect = useCallback((reason: string) => {
+    setConnectionStatus('disconnected');
+    setConnectedUsers([]);
+    console.log('🔌 Collaboration disconnected:', reason);
+  }, [setConnectionStatus, setConnectedUsers]);
+  
+  const onConnectionError = useCallback((error: Error) => {
+    setConnectionStatus('disconnected');
+    console.error('🚨 Collaboration error:', error);
+  }, [setConnectionStatus]);
+  
+  const onRoomUserChange = useCallback((users: string[]) => {
+    setConnectedUsers(users);
+  }, [setConnectedUsers]);
+  
+  const onNewUser = useCallback((userId: string) => {
+    console.log('👋 New collaborator joined:', userId);
+  }, []);
+  
+  const onUserLeft = useCallback((userId: string) => {
+    console.log('👋 Collaborator left:', userId);
+  }, []);
+  
+  const onSceneUpdate = useCallback((remoteElements: any[], remoteAppState: any) => {
+    // Prevent infinite loops
+    if (isReceivingUpdateRef.current) return;
     
-    onDisconnect: (reason: string) => {
-      setConnectionStatus('disconnected');
-      setConnectedUsers([]);
-      console.log('🔌 Collaboration disconnected:', reason);
-    },
+    isReceivingUpdateRef.current = true;
     
-    onConnectionError: (error: Error) => {
-      setConnectionStatus('disconnected');
-      console.error('🚨 Collaboration error:', error);
-    },
-    
-    onRoomUserChange: (users: string[]) => {
-      setConnectedUsers(users);
-    },
-    
-    onNewUser: (userId: string) => {
-      console.log('👋 New collaborator joined:', userId);
-      // Could trigger a welcome notification
-    },
-    
-    onUserLeft: (userId: string) => {
-      console.log('👋 Collaborator left:', userId);
-    },
-    
-    onSceneUpdate: (remoteElements: any[], remoteAppState: any) => {
-      // Prevent infinite loops
-      if (isReceivingUpdateRef.current) return;
+    try {
+      // Simple merge strategy: take remote updates as-is
+      setElements(remoteElements);
+      setAppState((prev: any) => ({
+        ...prev,
+        ...remoteAppState,
+        // Preserve local-only state
+        cursorButton: prev.cursorButton,
+        draggingElement: prev.draggingElement,
+      }));
       
-      isReceivingUpdateRef.current = true;
+      lastUpdateRef.current = { elements: remoteElements, appState: remoteAppState };
       
-      try {
-        // Simple merge strategy: take remote updates as-is
-        // In a production app, you'd want more sophisticated conflict resolution
-        setElements(remoteElements);
-        setAppState((prev: any) => ({
-          ...prev,
-          ...remoteAppState,
-          // Preserve local-only state
-          cursorButton: prev.cursorButton,
-          draggingElement: prev.draggingElement,
-        }));
-        
-        lastUpdateRef.current = { elements: remoteElements, appState: remoteAppState };
-        
-        console.log('📥 Scene updated from remote:', remoteElements.length, 'elements');
-      } finally {
-        // Allow sending updates again after a brief delay
-        setTimeout(() => {
-          isReceivingUpdateRef.current = false;
-        }, 100);
-      }
+      console.log('📥 Scene updated from remote:', remoteElements.length, 'elements');
+    } finally {
+      // Allow sending updates again after a brief delay
+      setTimeout(() => {
+        isReceivingUpdateRef.current = false;
+      }, 100);
     }
-  };
+  }, [setElements, setAppState]);
+
+  // Handle online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log('🌐 Network online');
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setConnectionStatus('disconnected');
+      console.log('🌐 Network offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [setConnectionStatus]);
 
   // Connect to room on mount
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || roomId.trim() === '') return;
+
+    const callbacks: WebSocketCallbacks = {
+      onConnect,
+      onDisconnect,
+      onConnectionError,
+      onRoomUserChange,
+      onNewUser,
+      onUserLeft,
+      onSceneUpdate,
+    };
 
     setRoomId(roomId);
     setConnectionStatus('connecting');
@@ -96,7 +125,7 @@ export function useCollaboration(roomId: string) {
       setConnectionStatus('disconnected');
       setConnectedUsers([]);
     };
-  }, [roomId]);
+  }, [roomId]); // Only depend on roomId to prevent infinite loops
 
   // Send scene updates to other users
   const sendSceneUpdate = useCallback((newElements: any[], newAppState: any) => {
@@ -114,17 +143,13 @@ export function useCollaboration(roomId: string) {
       }
     }
 
-    // Update local state first
-    setElements(newElements);
-    setAppState(newAppState);
-    
     // Send to other users
     if (websocketService.isConnected()) {
       websocketService.sendSceneUpdate(newElements, newAppState);
       lastUpdateRef.current = { elements: newElements, appState: newAppState };
       console.log('📤 Scene update sent:', newElements.length, 'elements');
     }
-  }, [setElements, setAppState]);
+  }, []); // Remove setElements and setAppState dependencies to prevent loops
 
   // Send cursor position (optional feature)
   const sendCursorUpdate = useCallback((x: number, y: number) => {
@@ -135,9 +160,9 @@ export function useCollaboration(roomId: string) {
 
   return {
     // Connection state
-    isConnected: connectionStatus === 'connected',
+    isConnected: connectionStatus === 'connected' && isOnline,
     isConnecting: connectionStatus === 'connecting',
-    connectionStatus,
+    connectionStatus: isOnline ? connectionStatus : 'disconnected',
     
     // Collaboration state
     connectedUsers,

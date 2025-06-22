@@ -16,6 +16,8 @@ function App() {
               <Routes>
                 <Route path="/" element={<WelcomeScreen />} />
                 <Route path="/room/:roomId" element={<CollaborativeBoard />} />
+                <Route path="/room/" element={<CollaborativeBoard />} />
+                <Route path="/room" element={<CollaborativeBoard />} />
               </Routes>
             </main>
           </div>

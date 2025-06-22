@@ -16,6 +16,10 @@ export default defineConfig({
       '@/utils': resolve(__dirname, './src/utils'),
     },
   },
+  define: {
+    // Define process for browser compatibility
+    'process.env': {},
+  },
   server: {
     port: 5173,
     host: true,

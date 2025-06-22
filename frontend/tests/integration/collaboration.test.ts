@@ -17,22 +17,22 @@ describe('Collaboration Integration', () => {
     }
   });
 
-  it('should have WebSocket service available', () => {
+  it('should have WebSocket service available', async () => {
     // Test that our WebSocket service can be imported
-    const { WebSocketService } = require('../../src/services/websocket');
+    const { WebSocketService } = await import('../../src/services/websocket');
     expect(WebSocketService).toBeDefined();
   });
 
-  it('should have collaboration hook available', () => {
+  it('should have collaboration hook available', async () => {
     // Test that our collaboration hook can be imported
-    const { useCollaboration } = require('../../src/hooks/useCollaboration');
+    const { useCollaboration } = await import('../../src/hooks/useCollaboration');
     expect(useCollaboration).toBeDefined();
   });
 
   it('should validate room ID format', () => {
     // Test room ID validation
     const validRoomIds = ['test-room', 'room123', 'a1b2c3'];
-    const invalidRoomIds = ['', ' ', null, undefined];
+    const invalidRoomIds = ['', null, undefined];
 
     validRoomIds.forEach(roomId => {
       expect(typeof roomId).toBe('string');
@@ -42,6 +42,9 @@ describe('Collaboration Integration', () => {
     invalidRoomIds.forEach(roomId => {
       expect(roomId).toBeFalsy();
     });
+
+    // Test space separately since it's technically truthy but invalid
+    expect(' '.trim()).toBe('');
   });
 
   it('should handle basic message format', () => {

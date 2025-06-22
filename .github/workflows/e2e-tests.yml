@@ -1,0 +1,197 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: Install Playwright browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps ${{ matrix.browser }}
+          
+      - name: Start backend services
+        run: |
+          # Start excalidraw-room backend
+          docker run -d --name excalidraw-room -p 3002:80 excalidraw/excalidraw-room:latest
+          
+          # Wait for backend to be ready
+          timeout 30 bash -c 'until curl -f http://localhost:3002; do sleep 1; done'
+          
+      - name: Run E2E tests
+        run: |
+          cd frontend
+          npm run test:e2e -- --project=${{ matrix.browser }}
+        env:
+          CI: true
+          
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: frontend/playwright-report/
+          retention-days: 7
+          
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ matrix.browser }}
+          path: frontend/test-results/
+          retention-days: 7
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop excalidraw-room || true
+          docker rm excalidraw-room || true
+
+  coverage:
+    name: Generate Test Coverage
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: Install Playwright browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps chromium
+          
+      - name: Start backend services
+        run: |
+          docker run -d --name excalidraw-room -p 3002:80 excalidraw/excalidraw-room:latest
+          timeout 30 bash -c 'until curl -f http://localhost:3002; do sleep 1; done'
+          
+      - name: Run coverage tests
+        run: |
+          cd frontend
+          npm run test:e2e:coverage
+        env:
+          CI: true
+          
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: frontend/test-results/coverage/
+          retention-days: 30
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop excalidraw-room || true
+          docker rm excalidraw-room || true
+
+  integration:
+    name: Full Integration Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: Install Playwright browsers
+        run: |
+          cd frontend
+          npx playwright install --with-deps
+          
+      - name: Start backend services
+        run: |
+          docker run -d --name excalidraw-room -p 3002:80 excalidraw/excalidraw-room:latest
+          timeout 30 bash -c 'until curl -f http://localhost:3002; do sleep 1; done'
+          
+      - name: Run full test suite
+        run: |
+          cd frontend
+          npm run test:e2e
+        env:
+          CI: true
+          
+      - name: Run performance tests
+        run: |
+          cd frontend
+          npm run test:e2e -- tests/e2e/specs/performance.spec.ts
+        env:
+          CI: true
+          
+      - name: Generate test summary
+        if: always()
+        run: |
+          cd frontend
+          echo "## E2E Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Browser: All supported browsers" >> $GITHUB_STEP_SUMMARY
+          echo "- Test suites: Single-user, Multi-user, Error handling, Performance" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: excalidraw-room (Docker)" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "test-results/results.json" ]; then
+            echo "- Results: See attached artifacts" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: Upload comprehensive results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-integration-results
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 30
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop excalidraw-room || true
+          docker rm excalidraw-room || true

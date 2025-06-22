@@ -5,18 +5,19 @@ services:
     image: excalidraw/excalidraw-room:latest
     container_name: excalidraw-board-backend
     ports:
-      - "3002:80"
+      - "3002:3002"
     environment:
       - NODE_ENV=development
+      - PORT=3002
     volumes:
       - ./backend/data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3002/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
   frontend:
     build:

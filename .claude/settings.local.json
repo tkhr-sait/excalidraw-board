@@ -34,7 +34,8 @@
       "WebFetch(domain:excalidraw.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:hub.docker.com)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }
