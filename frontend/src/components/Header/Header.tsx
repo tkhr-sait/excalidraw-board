@@ -1,7 +1,29 @@
 import { Link, useParams } from 'react-router-dom';
+import { useAtom } from 'jotai';
+import { connectionStatusAtom, connectedUsersAtom } from '../../stores/atoms/boardAtoms';
 
 const Header: React.FC = () => {
   const { roomId } = useParams();
+  const [connectionStatus] = useAtom(connectionStatusAtom);
+  const [connectedUsers] = useAtom(connectedUsersAtom);
+
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'text-green-600';
+      case 'connecting': return 'text-yellow-600';
+      case 'disconnected': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected': return `Connected (${connectedUsers.length} user${connectedUsers.length !== 1 ? 's' : ''})`;
+      case 'connecting': return 'Connecting...';
+      case 'disconnected': return 'Disconnected';
+      default: return 'Unknown';
+    }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
@@ -23,7 +45,13 @@ const Header: React.FC = () => {
               onClick={() => {
                 const url = window.location.href;
                 navigator.clipboard.writeText(url);
-                // TODO: Add toast notification
+                // Simple feedback
+                const button = event?.target as HTMLButtonElement;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                  button.textContent = originalText;
+                }, 1000);
               }}
               className="btn-secondary text-sm"
             >
@@ -32,7 +60,7 @@ const Header: React.FC = () => {
           )}
           
           <div className="text-sm text-gray-500">
-            Status: <span className="text-green-600">Connected</span>
+            Status: <span className={getStatusColor()}>{getStatusText()}</span>
           </div>
         </div>
       </div>
