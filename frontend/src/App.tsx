@@ -1,8 +1,8 @@
-import { ExcalidrawBoard } from './components/ExcalidrawBoard';
+import { CollaborativeExcalidrawBoard } from './components/CollaborativeExcalidrawBoard';
 import './App.css';
 
 function App() {
-  return <ExcalidrawBoard />;
+  return <CollaborativeExcalidrawBoard />;
 }
 
 export default App
