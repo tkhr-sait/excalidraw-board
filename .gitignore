@@ -40,8 +40,10 @@ node_modules/.vite/
 # Testing
 test-results/
 playwright-report/
+playwright-report-integration/
 blob-report/
 playwright/.cache/
+playwright/screenshots/
 
 # Coverage directory used by tools like istanbul
 coverage/

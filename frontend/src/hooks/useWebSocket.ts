@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { WebSocketService } from '../services/websocket';
+import { SocketIOWebSocketService } from '../services/socketio-websocket';
 
 // Define type locally to avoid import issues
 interface CollaborationMessage {
@@ -12,7 +12,7 @@ interface CollaborationMessage {
 export const useWebSocket = (url: string | null) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<CollaborationMessage | null>(null);
-  const wsService = useRef<WebSocketService>(new WebSocketService());
+  const wsService = useRef<SocketIOWebSocketService>(new SocketIOWebSocketService());
 
   useEffect(() => {
     if (!url) {

@@ -13,13 +13,15 @@ import { generateRandomRoomName, generateRandomUserName } from '../utils/randomN
 
 // Define types locally to avoid import issues
 interface SyncData {
-  type: 'sync' | 'cursor' | 'user-update';
+  type: 'sync' | 'cursor' | 'user-update' | 'scene-update';
   elements?: readonly any[];
   appState?: Partial<any>;
   collaborators?: Map<string, any>;
   cursor?: { x: number; y: number };
   userId: string;
   timestamp: number;
+  files?: any;
+  payload?: any;
 }
 
 export const useCollaboration = (excalidrawAPI: ExcalidrawImperativeAPI | null) => {
@@ -37,25 +39,48 @@ export const useCollaboration = (excalidrawAPI: ExcalidrawImperativeAPI | null) 
     if (!lastMessage || !excalidrawAPI) return;
 
     const data = lastMessage as SyncData;
+    console.log('useCollaboration received message:', data);
 
     if (data.userId === collaborationService.current.getUserId()) {
+      console.log('Ignoring own message from userId:', data.userId);
       return; // Ignore own messages
     }
 
+    console.log('Processing collaboration message:', data.type, data);
+
     switch (data.type) {
       case 'sync':
-        if (data.elements) {
+      case 'scene-update': {
+        // Try to get elements from various possible locations
+        const elements = data.elements || data.payload?.elements || [];
+        const appState = data.appState || data.payload?.appState || {};
+        
+        console.log('Scene update received with elements:', elements?.length || 0);
+        
+        if (elements) {
           const currentElements = excalidrawAPI.getSceneElements();
+          console.log('Current elements:', currentElements?.length || 0);
+          
           const merged = collaborationService.current.mergeElements(
             currentElements,
-            data.elements
+            elements
           );
+          
+          console.log('Merged elements:', merged?.length || 0);
+          
+          // Update scene with merged elements and preserved collaborators
           excalidrawAPI.updateScene({
             elements: merged,
-            appState: data.appState
+            appState: {
+              ...appState,
+              collaborators: collaborationService.current.getCollaborators()
+            }
           });
+        } else {
+          console.log('No elements to sync');
         }
         break;
+      }
 
       case 'cursor':
         if (data.cursor) {
@@ -75,13 +100,23 @@ export const useCollaboration = (excalidrawAPI: ExcalidrawImperativeAPI | null) 
         });
         break;
 
-      case 'user-joined':
-      case 'user-left':
+      case 'new-user':
+        // New user joined
+        console.log('New user joined:', data.payload);
+        break;
+
       case 'room-users':
         // Update connection count based on room users
         if (data.payload && data.payload.userCount) {
           setConnectionCount(data.payload.userCount);
+        } else if (data.userCount) {
+          setConnectionCount(data.userCount);
         }
+        break;
+
+      case 'first-in-room':
+        // First user in room
+        setConnectionCount(1);
         break;
     }
   }, [lastMessage, excalidrawAPI]);
@@ -89,11 +124,18 @@ export const useCollaboration = (excalidrawAPI: ExcalidrawImperativeAPI | null) 
   // Send local changes
   const syncElements = useCallback((
     elements: readonly ExcalidrawElement[],
-    appState: AppState
+    appState: AppState,
+    files?: any
   ) => {
     if (!isCollaborating || !isConnected) return;
 
-    const syncData = collaborationService.current.prepareSyncData(elements, appState);
+    console.log('syncElements called with:', elements?.length || 0, 'elements');
+    
+    // Send sync for all changes (including when elements array is empty)
+    // This ensures proper collaboration state synchronization
+    const syncData = collaborationService.current.prepareSceneUpdate(elements, appState, files);
+    console.log('Sending scene update with', elements?.length || 0, 'elements:', syncData);
+    
     sendMessage({
       ...syncData,
       roomId,
@@ -117,9 +159,11 @@ export const useCollaboration = (excalidrawAPI: ExcalidrawImperativeAPI | null) 
   useEffect(() => {
     if (isCollaborating && isConnected && service) {
       const userId = collaborationService.current.getUserId();
+      console.log('Joining room:', roomId, 'as user:', userName, userId);
       service.joinRoom(roomId, userName, userId);
     } else if (!isCollaborating && service) {
       const userId = collaborationService.current.getUserId();
+      console.log('Leaving room:', roomId, 'user:', userId);
       service.leaveRoom(roomId, userId);
     }
   }, [isCollaborating, isConnected, roomId, userName, service]);

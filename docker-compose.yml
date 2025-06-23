@@ -6,7 +6,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_WEBSOCKET_URL=ws://localhost:3002
+        - VITE_WEBSOCKET_URL=ws://localhost:3002/socket.io/
     ports:
       - "80:80"
     depends_on:

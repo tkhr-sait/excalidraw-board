@@ -10,7 +10,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_WEBSOCKET_URL=ws://localhost:3002
+      - VITE_WEBSOCKET_URL=ws://localhost:3002/socket.io/
     # npm installを実行してからdevサーバーを起動
     command: sh -c "npm install && npm run dev -- --host"
     depends_on:
@@ -26,6 +26,12 @@ services:
       - PORT=80
     networks:
       - excalidraw-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   excalidraw-network:

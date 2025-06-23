@@ -9,7 +9,7 @@ RUN npm ci
 # ソースコードのコピーとビルド
 COPY . .
 # ビルド時の環境変数設定
-ARG VITE_WEBSOCKET_URL=ws://localhost:3002
+ARG VITE_WEBSOCKET_URL=ws://localhost:3002/socket.io/
 ENV VITE_WEBSOCKET_URL=$VITE_WEBSOCKET_URL
 RUN npm run build
 

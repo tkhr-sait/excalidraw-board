@@ -10,7 +10,7 @@ export default defineConfig({
   timeout: 120000, // 統合テストは時間がかかるため延長
   
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'retain-on-failure',
