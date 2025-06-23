@@ -1,12 +1,25 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { 
-  ExcalidrawElement, 
-  ExcalidrawImperativeAPI,
-  AppState 
-} from '@excalidraw/excalidraw/types';
+  type ExcalidrawImperativeAPI,
+} from '@excalidraw/excalidraw';
+
+// Type definitions to avoid import issues
+type ExcalidrawElement = any;
+type AppState = any;
 import { useWebSocket } from './useWebSocket';
-import { CollaborationService, SyncData } from '../services/collaboration';
+import { CollaborationService } from '../services/collaboration';
 import { config } from '../config/environment';
+
+// Define types locally to avoid import issues
+interface SyncData {
+  type: 'sync' | 'cursor' | 'user-update';
+  elements?: readonly any[];
+  appState?: Partial<any>;
+  collaborators?: Map<string, any>;
+  cursor?: { x: number; y: number };
+  userId: string;
+  timestamp: number;
+}
 
 export const useCollaboration = (excalidrawAPI: ExcalidrawImperativeAPI | null) => {
   const [isCollaborating, setIsCollaborating] = useState(false);

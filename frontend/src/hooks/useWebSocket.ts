@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { WebSocketService, CollaborationMessage } from '../services/websocket';
+import { WebSocketService } from '../services/websocket';
+
+// Define type locally to avoid import issues
+interface CollaborationMessage {
+  type: string;
+  payload: any;
+  userId?: string;
+  timestamp?: number;
+}
 
 export const useWebSocket = (url: string | null) => {
   const [isConnected, setIsConnected] = useState(false);

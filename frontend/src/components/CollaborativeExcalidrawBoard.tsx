@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { 
   Excalidraw, 
-  LiveCollaborationTrigger 
+  LiveCollaborationTrigger,
+  type ExcalidrawImperativeAPI
 } from '@excalidraw/excalidraw';
-import { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { useCollaboration } from '../hooks/useCollaboration';
 import { ConnectionStatus } from './ConnectionStatus';
 import '@excalidraw/excalidraw/index.css';
@@ -30,7 +30,7 @@ export const CollaborativeExcalidrawBoard: React.FC = () => {
   }, [syncCursor]);
 
   return (
-    <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
+    <div style={{ height: '100vh', width: '100vw', position: 'relative' }} data-testid="excalidraw-board">
       <ConnectionStatus isConnected={isConnected && isCollaborating} />
       
       <Excalidraw
