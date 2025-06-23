@@ -227,11 +227,11 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ isConnected 
 ```
 
 ## 検証項目
-- [ ] WebSocketサービスのテストが通ること
-- [ ] excalidraw-roomへの接続が確立できること
-- [ ] メッセージの送受信が正常に動作すること
-- [ ] 接続状態が画面に表示されること
-- [ ] 接続エラーが適切にハンドリングされること
+- [x] WebSocketサービスのテストが通ること
+- [x] excalidraw-roomへの接続が確立できること
+- [x] メッセージの送受信が正常に動作すること
+- [x] 接続状態が画面に表示されること
+- [x] 接続エラーが適切にハンドリングされること
 
 ## 成果物
 - frontend/src/services/websocket.ts
