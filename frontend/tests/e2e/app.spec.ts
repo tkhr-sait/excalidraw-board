@@ -24,6 +24,6 @@ test.describe('Excalidraw App', () => {
 
   test('should have the correct page title', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle('Vite + React + TS');
+    await expect(page).toHaveTitle('Excalidraw Board');
   });
 });

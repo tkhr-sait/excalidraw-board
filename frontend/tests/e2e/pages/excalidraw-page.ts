@@ -27,10 +27,10 @@ export class ExcalidrawPage {
     this.toolbarArrow = page.locator('.ToolIcon[data-testid="toolbar-arrow"], button[data-testid="toolbar-arrow"], [data-testid*="arrow"], .Shape-arrow, [title*="Arrow"], [aria-label*="Arrow"]').first();
     this.toolbarText = page.locator('.ToolIcon[data-testid="toolbar-text"], button[data-testid="toolbar-text"], [data-testid*="text"], .Shape-text, [title*="Text"], [aria-label*="Text"]').first();
     this.toolbarSelection = page.locator('.ToolIcon[data-testid="toolbar-selection"], button[data-testid="toolbar-selection"], [data-testid*="selection"], .Shape-selection, [title*="Selection"], [aria-label*="Selection"]').first();
-    this.joinRoomButton = page.locator('button:has-text("Join Room")');
-    this.leaveRoomButton = page.locator('button:has-text("Leave Room")');
-    this.connectionStatus = page.locator('.connection-status');
-    this.collaboratorsList = page.locator('.collaborators-list');
+    this.joinRoomButton = page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first();
+    this.leaveRoomButton = page.locator('button').filter({ hasText: /Leave|退出/i }).first();
+    this.connectionStatus = page.locator('.collab-footer-container .connection-status').first();
+    this.collaboratorsList = page.locator('.collab-footer-container .collaborators-list').first();
     this.roomDialog = page.locator('.room-dialog-overlay');
     this.roomIdInput = page.locator('input[placeholder="Enter room ID"]');
     this.usernameInput = page.locator('input[placeholder="Enter your name"]');
