@@ -15,7 +15,10 @@ export const useWebSocket = (url: string | null) => {
   const wsService = useRef<WebSocketService>(new WebSocketService());
 
   useEffect(() => {
-    if (!url) return;
+    if (!url) {
+      setIsConnected(false);
+      return;
+    }
 
     const connect = async () => {
       const connected = await wsService.current.connect(url);
@@ -26,12 +29,19 @@ export const useWebSocket = (url: string | null) => {
       setLastMessage(data);
     };
 
+    const connectionStateHandler = (connected: boolean) => {
+      setIsConnected(connected);
+    };
+
     wsService.current.onMessage(messageHandler);
+    wsService.current.onConnectionStateChange(connectionStateHandler);
     connect();
 
     return () => {
       wsService.current.offMessage(messageHandler);
+      wsService.current.offConnectionStateChange(connectionStateHandler);
       wsService.current.disconnect();
+      setIsConnected(false);
     };
   }, [url]);
 

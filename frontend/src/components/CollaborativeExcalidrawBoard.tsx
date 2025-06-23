@@ -1,11 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { 
   Excalidraw, 
-  LiveCollaborationTrigger,
+  MainMenu,
+  Footer,
   type ExcalidrawImperativeAPI
 } from '@excalidraw/excalidraw';
 import { useCollaboration } from '../hooks/useCollaboration';
-import { ConnectionStatus } from './ConnectionStatus';
+import { CollaborationTopRightUI } from './CollaborationTopRightUI';
+import { CollaborationMainMenu } from './CollaborationMainMenu';
+import { CollaborationFooter } from './CollaborationFooter';
 import '@excalidraw/excalidraw/index.css';
 
 export const CollaborativeExcalidrawBoard: React.FC = () => {
@@ -13,7 +16,16 @@ export const CollaborativeExcalidrawBoard: React.FC = () => {
   const {
     isCollaborating,
     isConnected,
+    roomId,
+    userName,
+    connectionCount,
     toggleCollaboration,
+    startCollaboration,
+    stopCollaboration,
+    updateRoomId,
+    updateUserName,
+    generateNewUserName,
+    generateNewRoomName,
     syncElements,
     syncCursor,
     collaborators
@@ -30,21 +42,59 @@ export const CollaborativeExcalidrawBoard: React.FC = () => {
   }, [syncCursor]);
 
   return (
-    <div style={{ height: '100vh', width: '100vw', position: 'relative' }} data-testid="excalidraw-board">
-      <ConnectionStatus isConnected={isConnected && isCollaborating} />
-      
+    <div style={{ height: '100vh', width: '100vw', position: 'relative' }} data-testid="excalidraw-board">      
       <Excalidraw
         ref={(api) => setExcalidrawAPI(api)}
         onChange={handleChange}
         onPointerUpdate={handlePointerUpdate}
         isCollaborating={isCollaborating}
         renderTopRightUI={() => (
-          <LiveCollaborationTrigger
+          <CollaborationTopRightUI
             isCollaborating={isCollaborating}
-            onSelect={toggleCollaboration}
+            isConnected={isConnected}
+            userName={userName}
+            connectionCount={connectionCount}
           />
         )}
-      />
+      >
+        {/* Custom Main Menu with Collaboration Items */}
+        <MainMenu>
+          <MainMenu.DefaultItems.LoadScene />
+          <MainMenu.DefaultItems.SaveToActiveFile />
+          <MainMenu.DefaultItems.SaveAsImage />
+          <MainMenu.DefaultItems.Export />
+          <MainMenu.Separator />
+          <MainMenu.ItemCustom>
+            <CollaborationMainMenu
+              isCollaborating={isCollaborating}
+              roomId={roomId}
+              userName={userName}
+              onRoomChange={updateRoomId}
+              onUserNameChange={updateUserName}
+              onStartCollaboration={startCollaboration}
+              onStopCollaboration={stopCollaboration}
+              onGenerateNewUserName={generateNewUserName}
+              onGenerateNewRoomName={generateNewRoomName}
+            />
+          </MainMenu.ItemCustom>
+          <MainMenu.Separator />
+          <MainMenu.DefaultItems.Help />
+          <MainMenu.DefaultItems.ClearCanvas />
+          <MainMenu.DefaultItems.ToggleTheme />
+        </MainMenu>
+
+        {/* Custom Footer with Collaboration Status */}
+        <Footer>
+          <CollaborationFooter
+            isCollaborating={isCollaborating}
+            isConnected={isConnected}
+            roomId={roomId}
+            userName={userName}
+            connectionCount={connectionCount}
+            onGenerateNewUserName={generateNewUserName}
+          />
+        </Footer>
+      </Excalidraw>
     </div>
   );
 };

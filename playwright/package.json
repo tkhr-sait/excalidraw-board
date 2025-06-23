@@ -7,7 +7,11 @@
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
-    "test:codegen": "playwright codegen http://localhost:5173"
+    "test:codegen": "playwright codegen http://localhost:5173",
+    "test:integration": "playwright test --config=playwright.config.integration.ts",
+    "test:integration:ui": "playwright test --config=playwright.config.integration.ts --ui",
+    "test:integration:debug": "playwright test --config=playwright.config.integration.ts --debug",
+    "integration": "./scripts/run-integration-tests.sh"
   },
   "keywords": [],
   "author": "",

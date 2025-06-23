@@ -2,6 +2,8 @@ export interface CollaborationMessage {
   type: string;
   payload: any;
   userId?: string;
+  userName?: string;
+  roomId?: string;
   timestamp?: number;
 }
 
@@ -9,6 +11,7 @@ export class WebSocketService {
   private ws: WebSocket | null = null;
   private messageHandlers: Array<(data: CollaborationMessage) => void> = [];
   private connectionPromise: Promise<boolean> | null = null;
+  private connectionStateHandlers: Array<(connected: boolean) => void> = [];
 
   async connect(url: string): Promise<boolean> {
     if (this.ws?.readyState === WebSocket.OPEN) {
@@ -21,6 +24,7 @@ export class WebSocketService {
 
         this.ws.onopen = () => {
           console.log('WebSocket connected');
+          this.connectionStateHandlers.forEach(handler => handler(true));
           resolve(true);
         };
 
@@ -40,6 +44,7 @@ export class WebSocketService {
 
         this.ws.onclose = () => {
           console.log('WebSocket disconnected');
+          this.connectionStateHandlers.forEach(handler => handler(false));
           this.ws = null;
         };
       } catch (error) {
@@ -79,5 +84,32 @@ export class WebSocketService {
 
   get isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  onConnectionStateChange(handler: (connected: boolean) => void): void {
+    this.connectionStateHandlers.push(handler);
+  }
+
+  offConnectionStateChange(handler: (connected: boolean) => void): void {
+    this.connectionStateHandlers = this.connectionStateHandlers.filter(h => h !== handler);
+  }
+
+  joinRoom(roomId: string, userName: string, userId: string): void {
+    this.send({
+      type: 'join-room',
+      payload: { roomId, userName, userId },
+      userId,
+      userName,
+      roomId,
+    });
+  }
+
+  leaveRoom(roomId: string, userId: string): void {
+    this.send({
+      type: 'leave-room',
+      payload: { roomId, userId },
+      userId,
+      roomId,
+    });
   }
 }
