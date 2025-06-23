@@ -68,7 +68,7 @@ export class SocketService {
     }
   }
 
-  leaveRoom(roomId: string): void {
+  leaveRoom(_roomId: string): void {
     if (!this.socket) {
       return;
     }

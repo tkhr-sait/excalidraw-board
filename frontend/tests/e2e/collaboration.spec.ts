@@ -8,15 +8,17 @@ test.describe('Collaboration Features', () => {
     await expect(page.locator('[data-testid="excalidraw-canvas"]')).toBeVisible();
   });
 
-  test('should show collaboration toolbar', async ({ page }) => {
-    // Check that collaboration toolbar is visible
-    await expect(page.locator('.collab-toolbar')).toBeVisible();
+  test('should show collaboration status indicator', async ({ page }) => {
+    // Check that collaboration status indicator is visible in footer
+    await expect(page.locator('.collab-status-indicator')).toBeVisible();
     
     // Check connection status
-    await expect(page.locator('.connection-status')).toBeVisible();
+    await expect(page.locator('.collab-status-indicator .connection-status')).toBeVisible();
     
-    // Check join room button
-    await expect(page.locator('button:has-text("Join Room")')).toBeVisible();
+    // Check that LiveCollaborationTrigger (Share button) is visible in top-right
+    // Try multiple possible selectors for the share button
+    const shareButton = page.locator('[data-testid="collab-button"]').or(page.locator('button').filter({ hasText: /Share|共有|Collaborate/i })).or(page.locator('[aria-label*="Share"]')).or(page.locator('[aria-label*="Collaborate"]'));
+    await expect(shareButton.first()).toBeVisible();
   });
 
   test('should show connection status as connected', async ({ page }) => {
@@ -24,7 +26,7 @@ test.describe('Collaboration Features', () => {
     await page.waitForTimeout(5000);
     
     // Check that connection indicator shows connected (may show disconnected in test environment)
-    const connectionStatus = page.locator('.connection-status');
+    const connectionStatus = page.locator('.collab-status-indicator .connection-status');
     await expect(connectionStatus).toBeVisible();
     
     // In test environment, socket may not connect, so we just verify the UI exists
@@ -32,16 +34,16 @@ test.describe('Collaboration Features', () => {
     expect(statusText).toMatch(/(Connected|Disconnected)/);
   });
 
-  test('should open room dialog when join button clicked', async ({ page }) => {
+  test('should open room dialog when share button clicked', async ({ page }) => {
     // Wait for socket to connect or button to be enabled
     await page.waitForTimeout(3000);
     
-    // Check if button is enabled, if not, we'll test the UI anyway
-    const joinButton = page.locator('button:has-text("Join Room")');
-    await expect(joinButton).toBeVisible();
+    // Find and click the LiveCollaborationTrigger (Share button) in top-right
+    const shareButton = page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).or(page.locator('[aria-label*="Share"]')).or(page.locator('[aria-label*="Collaborate"]'));
+    await expect(shareButton.first()).toBeVisible();
     
     // Force click to test dialog even if socket is disconnected
-    await joinButton.click({ force: true });
+    await shareButton.first().click({ force: true });
     
     // Check that room dialog appears
     await expect(page.locator('.room-dialog-overlay')).toBeVisible();
@@ -54,8 +56,8 @@ test.describe('Collaboration Features', () => {
   });
 
   test('should be able to join a room', async ({ page }) => {
-    // Force click join room button even if disabled
-    await page.locator('button:has-text("Join Room")').click({ force: true });
+    // Force click share button even if disabled
+    await page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first().click({ force: true });
     
     // Fill in room details
     await page.locator('input[placeholder="Enter room ID"]').fill('test-room-e2e');
@@ -88,8 +90,8 @@ test.describe('Collaboration Features', () => {
 
   test('should be able to leave a room', async ({ page }) => {
     // This test primarily validates the UI behavior rather than actual socket functionality
-    // Force click to open dialog
-    await page.locator('button:has-text("Join Room")').click({ force: true });
+    // Force click to open dialog (use share button)
+    await page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first().click({ force: true });
     await page.locator('input[placeholder="Enter room ID"]').fill('test-room-leave');
     await page.locator('input[placeholder="Enter your name"]').fill('Test User');
     await page.locator('button[type="submit"]:has-text("Join")').click();
@@ -97,13 +99,13 @@ test.describe('Collaboration Features', () => {
     // Wait and check if dialog closed (indicating form submission worked)
     await page.waitForTimeout(2000);
     
-    // Since socket may not work in test env, we just verify the join button is still visible
-    await expect(page.locator('button:has-text("Join Room")')).toBeVisible();
+    // Since socket may not work in test env, we just verify the share button is still visible
+    await expect(page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first()).toBeVisible();
   });
 
   test('should close room dialog when cancel is clicked', async ({ page }) => {
-    // Open room dialog (force click even if button is disabled)
-    await page.locator('button:has-text("Join Room")').click({ force: true });
+    // Open room dialog (force click even if button is disabled, use share button)
+    await page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first().click({ force: true });
     await expect(page.locator('.room-dialog-overlay')).toBeVisible();
     
     // Click cancel
@@ -144,10 +146,10 @@ test.describe('Realtime Sync Debug', () => {
     // Wait for page to fully load and socket connections
     await page.waitForTimeout(5000);
 
-    // Try to join a room to trigger collaboration code
-    const joinButton = page.locator('button:has-text("Join Room")');
-    if (await joinButton.isVisible()) {
-      await joinButton.click({ force: true });
+    // Try to join a room to trigger collaboration code (use share button)
+    const shareButton = page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first();
+    if (await shareButton.isVisible()) {
+      await shareButton.click({ force: true });
       await page.fill('input[placeholder="Enter room ID"]', 'debug-room');
       await page.fill('input[placeholder="Enter your name"]', 'DebugUser');
       await page.click('button[type="submit"]:has-text("Join")');
@@ -220,9 +222,9 @@ test.describe('Realtime Sync Features', () => {
       await page1.waitForTimeout(1000);
       await page2.waitForTimeout(1000);
       
-      // Verify collaboration toolbar shows connected state
-      await expect(page1.locator('.collab-toolbar')).toBeVisible();
-      await expect(page2.locator('.collab-toolbar')).toBeVisible();
+      // Verify collaboration status indicator shows connected state
+      await expect(page1.locator('.collab-status-indicator')).toBeVisible();
+      await expect(page2.locator('.collab-status-indicator')).toBeVisible();
       
       // Check that collaborators list is visible (if room join succeeded)
       // In test environment, joining may fail due to socket issues
@@ -230,8 +232,8 @@ test.describe('Realtime Sync Features', () => {
       const hasCollaborators2 = await page2.locator('.collaborators-list').isVisible();
       
       // At least verify the UI components exist
-      await expect(page1.locator('.collab-container')).toBeVisible();
-      await expect(page2.locator('.collab-container')).toBeVisible();
+      await expect(page1.locator('.collab-footer-container')).toBeVisible();
+      await expect(page2.locator('.collab-footer-container')).toBeVisible();
       
       // Test would simulate drawing but Excalidraw's canvas interactions
       // are complex and would require more detailed DOM manipulation
@@ -253,11 +255,11 @@ test.describe('Realtime Sync Features', () => {
     await page.waitForTimeout(1000);
     
     // Just verify sync infrastructure exists (pointer movement test requires complex setup)
-    await expect(page.locator('.collab-container')).toBeVisible();
+    await expect(page.locator('.collab-footer-container')).toBeVisible();
     
     // Verify the sync service is working (indirect test)
     // In a real scenario, this would check for network events
-    await expect(page.locator('.collab-toolbar')).toBeVisible();
+    await expect(page.locator('.collab-status-indicator')).toBeVisible();
   });
 
   test('should maintain sync state during collaboration', async ({ page }) => {
@@ -272,7 +274,7 @@ test.describe('Realtime Sync Features', () => {
     const hasCollaborators = await page.locator('.collaborators-list').isVisible();
     
     // At minimum, verify the UI exists
-    await expect(page.locator('.collab-container')).toBeVisible();
+    await expect(page.locator('.collab-footer-container')).toBeVisible();
     
     // Try to leave room if button exists
     if (hasLeaveButton) {
@@ -280,13 +282,13 @@ test.describe('Realtime Sync Features', () => {
       await page.waitForTimeout(500);
     }
     
-    // Verify join button is always visible
-    await expect(page.locator('button:has-text("Join Room")').first()).toBeVisible();
+    // Verify share button is always visible
+    await expect(page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first()).toBeVisible();
   });
 });
 
 async function joinRoom(page: any, roomId: string, username: string) {
-  await page.locator('button:has-text("Join Room")').click({ force: true });
+  await page.locator('button').filter({ hasText: /Share|共有|Collaborate/i }).first().click({ force: true });
   await page.locator('input[placeholder="Enter room ID"]').fill(roomId);
   await page.locator('input[placeholder="Enter your name"]').fill(username);
   await page.locator('button[type="submit"]:has-text("Join")').click();

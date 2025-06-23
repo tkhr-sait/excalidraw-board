@@ -3,7 +3,7 @@ import { useSocket } from '../../hooks/useSocket';
 import { SyncPortal } from '../../services/sync-portal';
 import { socketService } from '../../services/socket';
 import type { CollaborationState, RoomFormData } from '../../types/collaboration';
-import type { RoomData, RoomUser, SocketUpdateData } from '../../types/socket';
+import type { RoomUser, SocketUpdateData } from '../../types/socket';
 import { WS_SUBTYPES } from '../../types/socket';
 import { CollabToolbar } from './CollabToolbar';
 import { CollaboratorsList } from './CollaboratorsList';
@@ -33,6 +33,9 @@ interface CollabProps {
 export interface CollabHandle {
   broadcastSceneUpdate: (elements: any[], appState: any) => Promise<void>;
   broadcastPointerUpdate: (x: number, y: number) => Promise<void>;
+  joinRoom: (data: RoomFormData) => void;
+  leaveRoom: () => void;
+  getState: () => CollaborationState;
 }
 
 export const Collab = forwardRef<CollabHandle, CollabProps>(({ 
@@ -343,8 +346,11 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     broadcastSceneUpdate,
-    broadcastPointerUpdate
-  }), [broadcastSceneUpdate, broadcastPointerUpdate]);
+    broadcastPointerUpdate,
+    joinRoom: handleJoinRoom,
+    leaveRoom: handleLeaveRoom,
+    getState: () => state
+  }), [broadcastSceneUpdate, broadcastPointerUpdate, handleJoinRoom, handleLeaveRoom, state]);
 
   return (
     <div className="collab-container">

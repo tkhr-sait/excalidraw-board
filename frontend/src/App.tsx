@@ -10,10 +10,13 @@ import type {
   AppState,
   ExcalidrawImperativeAPI,
 } from './types/excalidraw';
-import type { RoomUser, SceneUpdate, CollaboratorPointer } from './types/socket';
+import type { RoomUser, CollaboratorPointer } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import { Collab } from './components/collab/Collab';
 import type { CollabHandle } from './components/collab/Collab';
+import { CollabFooter } from './components/collab/CollabFooter';
+import { CollabMobileMenu } from './components/collab/CollabMobileMenu';
+import { RoomDialog } from './components/collab/RoomDialog';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import './App.css';
@@ -29,10 +32,13 @@ function App() {
   const [isCollaborating, setIsCollaborating] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
-  const [, setCollaborators] = useState<RoomUser[]>([]);
+  const [collaborators, setCollaborators] = useState<RoomUser[]>([]);
   const [, setCollaboratorPointers] = useState<
     Map<string, CollaboratorPointer>
   >(new Map());
+  const [showRoomDialog, setShowRoomDialog] = useState(false);
+  const [roomDialogError, setRoomDialogError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -264,12 +270,17 @@ function App() {
         setCurrentRoomId(roomId || null);
         setCurrentUsername(username || null);
         console.log('Set room and username:', { roomId, username });
+        // Close dialog and reset states on successful connection
+        setShowRoomDialog(false);
+        setIsConnecting(false);
+        setRoomDialogError(null);
       } else if (!collaborating) {
         // Stop collaboration
         collaboration.stopCollaboration();
         setCollaboratorPointers(new Map());
         setCurrentRoomId(null);
         setCurrentUsername(null);
+        setIsConnecting(false);
       }
     },
     [collaboration]
@@ -280,15 +291,54 @@ function App() {
     setCollaborators(newCollaborators);
   }, []);
 
+  // ルームダイアログを開く
+  const handleOpenRoomDialog = useCallback(() => {
+    setShowRoomDialog(true);
+  }, []);
+
+  // ルームダイアログを閉じる
+  const handleCloseRoomDialog = useCallback(() => {
+    setShowRoomDialog(false);
+    setRoomDialogError(null);
+    setIsConnecting(false);
+  }, []);
+
+  // ルーム参加処理
+  const handleJoinRoom = useCallback((data: { roomId: string; username: string }) => {
+    if (collabRef.current) {
+      setIsConnecting(true);
+      setRoomDialogError(null);
+      try {
+        collabRef.current.joinRoom(data);
+      } catch (error) {
+        setRoomDialogError(error instanceof Error ? error.message : 'Unknown error occurred');
+        setIsConnecting(false);
+        return;
+      }
+    }
+    setShowRoomDialog(false);
+    setIsConnecting(false);
+  }, []);
+
+  // ルーム退出処理
+  const handleLeaveRoom = useCallback(() => {
+    if (collabRef.current) {
+      collabRef.current.leaveRoom();
+    }
+  }, []);
+
   return (
     <div className="app">
-      <Collab
-        ref={collabRef}
-        onCollaborationStateChange={handleCollaborationStateChange}
-        onCollaboratorsChange={handleCollaboratorsChange}
-        onSceneUpdate={handleCollabSceneUpdate}
-        onPointerUpdate={handleCollabPointerUpdate}
-      />
+      {/* Hidden Collab component for backend functionality */}
+      <div style={{ display: 'none' }}>
+        <Collab
+          ref={collabRef}
+          onCollaborationStateChange={handleCollaborationStateChange}
+          onCollaboratorsChange={handleCollaboratorsChange}
+          onSceneUpdate={handleCollabSceneUpdate}
+          onPointerUpdate={handleCollabPointerUpdate}
+        />
+      </div>
       
       <div className="excalidraw-wrapper" data-testid="excalidraw-canvas">
         <Excalidraw
@@ -309,24 +359,29 @@ function App() {
               toggleTheme: true,
             },
           }}
-          renderTopRightUI={() => (
-            <LiveCollaborationTrigger
-              isCollaborating={isCollaborating}
-              onSelect={() => {
-                if (!isCollaborating) {
-                  const joinButton = document.querySelector('[data-testid="collab-join-room-button"]') as HTMLButtonElement;
-                  if (joinButton) {
-                    joinButton.click();
+          renderTopRightUI={() => {
+            // Count active collaborators (excluding current user)
+            const collaboratorCount = collaborators.filter(c => c.id !== currentUsername).length;
+            
+            return (
+              <LiveCollaborationTrigger
+                isCollaborating={isCollaborating}
+                onSelect={() => {
+                  if (!isCollaborating) {
+                    handleOpenRoomDialog();
+                  } else {
+                    handleLeaveRoom();
                   }
-                } else {
-                  const leaveButton = document.querySelector('[data-testid="collab-leave-room-button"]') as HTMLButtonElement;
-                  if (leaveButton) {
-                    leaveButton.click();
-                  }
-                }
-              }}
-            />
-          )}
+                }}
+              >
+                {isCollaborating && collaboratorCount > 0 && (
+                  <span className="collaborator-count">
+                    {collaboratorCount}
+                  </span>
+                )}
+              </LiveCollaborationTrigger>
+            );
+          }}
         >
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
@@ -335,14 +390,43 @@ function App() {
             <MainMenu.Separator />
             <MainMenu.DefaultItems.ToggleTheme />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
+            
+            {/* Mobile collaboration menu - only rendered on mobile devices */}
+            <CollabMobileMenu
+              isConnected={socket.isConnected}
+              isInRoom={isCollaborating}
+              roomId={currentRoomId}
+              collaborators={collaborators}
+              currentUserId={currentUsername || ''}
+            />
           </MainMenu>
           <WelcomeScreen>
             <WelcomeScreen.Hints.MenuHint />
             <WelcomeScreen.Hints.ToolbarHint />
             <WelcomeScreen.Hints.HelpHint />
           </WelcomeScreen>
+          
+          {/* Desktop collaboration footer */}
+          <CollabFooter
+            isConnected={socket.isConnected}
+            isInRoom={isCollaborating}
+            roomId={currentRoomId}
+            collaborators={collaborators}
+            currentUserId={currentUsername || ''}
+          />
         </Excalidraw>
       </div>
+      
+      {/* Room dialog */}
+      {showRoomDialog && (
+        <RoomDialog
+          isOpen={showRoomDialog}
+          isConnecting={isConnecting}
+          error={roomDialogError}
+          onJoin={handleJoinRoom}
+          onClose={handleCloseRoomDialog}
+        />
+      )}
     </div>
   );
 }
