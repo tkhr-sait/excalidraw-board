@@ -39,11 +39,68 @@ function App() {
   const [showRoomDialog, setShowRoomDialog] = useState(false);
   const [roomDialogError, setRoomDialogError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [pendingUrlJoin, setPendingUrlJoin] = useState<{roomId: string; username: string} | null>(null);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   // Collab componentの参照を保持
   const collabRef = useRef<CollabHandle | null>(null);
+
+  // URLパラメータからRoom情報を取得
+  useEffect(() => {
+    console.log('URL processing effect running...');
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomIdFromUrl = urlParams.get('room');
+    const usernameFromUrl = urlParams.get('username');
+    
+    console.log('URL params:', { roomIdFromUrl, usernameFromUrl, search: window.location.search });
+    
+    if (roomIdFromUrl && usernameFromUrl) {
+      console.log('Setting up URL join for room:', roomIdFromUrl, 'username:', usernameFromUrl);
+      // URL経由でRoom参加 - 自動的にルームに参加するためのペンディング状態を設定
+      setCurrentRoomId(roomIdFromUrl);
+      setCurrentUsername(usernameFromUrl);
+      setPendingUrlJoin({ roomId: roomIdFromUrl, username: usernameFromUrl });
+      
+      // URLパラメータをクリア（履歴汚染防止）
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      console.log('No URL parameters found for auto-join');
+    }
+  }, []);
+
+  // Collab componentが準備できたらペンディング中のURL参加を処理
+  useEffect(() => {
+    console.log('Pending URL join effect check:', {
+      pendingUrlJoin,
+      hasCollabRef: !!collabRef.current,
+      socketConnected: socket.isConnected
+    });
+    
+    if (pendingUrlJoin && collabRef.current) {
+      if (socket.isConnected) {
+        console.log('Auto-joining room from URL parameters:', pendingUrlJoin);
+        setIsConnecting(true);
+        setRoomDialogError(null);
+        try {
+          collabRef.current.joinRoom({
+            roomId: pendingUrlJoin.roomId,
+            username: pendingUrlJoin.username
+          });
+          console.log('joinRoom called successfully for URL login');
+          setPendingUrlJoin(null); // ペンディング状態をクリア
+        } catch (error) {
+          console.error('Error joining room from URL:', error);
+          setRoomDialogError(error instanceof Error ? error.message : 'Unknown error occurred');
+          setIsConnecting(false);
+          setShowRoomDialog(true); // エラー時はダイアログを表示
+          setPendingUrlJoin(null);
+        }
+      } else {
+        console.log('Socket not connected yet, waiting for connection...');
+      }
+    }
+  }, [pendingUrlJoin, socket.isConnected]);
 
   // 初期データの読み込み
   useEffect(() => {
@@ -237,8 +294,11 @@ function App() {
       (window as any).socketConnected = socket.isConnected;
       (window as any).isCollaborating = isCollaborating;
       (window as any).excalidrawAPI = excalidrawAPIRef.current;
+      (window as any).pendingUrlJoin = pendingUrlJoin;
+      (window as any).currentRoomId = currentRoomId;
+      (window as any).currentUsername = currentUsername;
     }
-  }, [socket, isCollaborating, excalidrawAPIRef.current]);
+  }, [socket, isCollaborating, excalidrawAPIRef.current, pendingUrlJoin, currentRoomId, currentUsername]);
 
   // ポインター更新のハンドラ
   const handlePointerUpdate = useCallback(
@@ -425,6 +485,8 @@ function App() {
           error={roomDialogError}
           onJoin={handleJoinRoom}
           onClose={handleCloseRoomDialog}
+          initialRoomId={currentRoomId}
+          initialUsername={currentUsername}
         />
       )}
     </div>

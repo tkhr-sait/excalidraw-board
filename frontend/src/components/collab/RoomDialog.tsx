@@ -9,6 +9,8 @@ interface RoomDialogProps {
   error: string | null;
   onJoin: (data: RoomFormData) => void;
   onClose: () => void;
+  initialRoomId?: string | null;
+  initialUsername?: string | null;
 }
 
 export function RoomDialog({
@@ -17,6 +19,8 @@ export function RoomDialog({
   error,
   onJoin,
   onClose,
+  initialRoomId,
+  initialUsername,
 }: RoomDialogProps) {
   const [formData, setFormData] = useState<RoomFormData>({
     roomId: '',
@@ -27,11 +31,11 @@ export function RoomDialog({
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        roomId: formData.roomId || generateRandomRoomName(),
-        username: formData.username || getOrCreateUsername(),
+        roomId: initialRoomId || formData.roomId || generateRandomRoomName(),
+        username: initialUsername || formData.username || getOrCreateUsername(),
       });
     }
-  }, [isOpen]);
+  }, [isOpen, initialRoomId, initialUsername]);
 
   if (!isOpen) return null;
 

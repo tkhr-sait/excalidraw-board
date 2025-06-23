@@ -1,11 +1,17 @@
 .collab-footer-container {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
   background: var(--color-surface-low);
-  border-top: 1px solid var(--color-border);
-  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  min-height: 40px;
+  max-height: 44px;
+  margin: 0 auto;
+  max-width: fit-content;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Override the original collab-toolbar styles for footer layout */
@@ -56,29 +62,30 @@
 
 /* Adjust collaborators list for footer */
 .collab-footer-container .collaborators-list {
-  margin-left: auto; /* Push to the right side */
   background: transparent;
   border: none;
   box-shadow: none;
-  margin-top: 0;
+  margin: 0;
+  padding: 0;
 }
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
   .collab-footer-container {
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 0.5rem;
-    padding: 0.25rem;
+    padding: 0.5rem;
+    border-radius: 8px;
   }
   
   .collab-footer-container .collaborators-list {
-    margin-left: 0;
-    align-self: stretch;
+    flex-shrink: 0;
   }
 }
 
 /* Dark theme support */
 [data-theme="dark"] .collab-footer-container {
   background: var(--color-surface-low);
-  border-top-color: var(--color-border);
+  border-color: var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }

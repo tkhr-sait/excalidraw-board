@@ -104,3 +104,18 @@
 .leave-button:hover {
   background-color: #f44336;
 }
+
+.room-copy-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  transition: background-color 0.2s;
+}
+
+.room-copy-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}

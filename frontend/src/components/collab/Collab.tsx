@@ -263,6 +263,22 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     
     try {
       socket.joinRoom(data.roomId, data.username);
+      
+      // Force collaboration state change for URL login scenario
+      // This ensures that even if socket events don't fire immediately,
+      // the collaboration state is activated
+      const deterministicKey = generateDeterministicKey(data.roomId);
+      setRoomKey(deterministicKey);
+      socketService.setRoomKey(deterministicKey);
+      
+      setState(prev => ({
+        ...prev,
+        isInRoom: true,
+        isConnecting: false,
+        error: null,
+      }));
+      
+      onCollaborationStateChange?.(true, deterministicKey, data.roomId, data.username);
     } catch (error) {
       setState(prev => ({
         ...prev,

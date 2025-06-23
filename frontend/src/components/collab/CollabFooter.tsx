@@ -32,6 +32,7 @@ export function CollabFooter({
           isConnected={isConnected}
           isInRoom={isInRoom}
           roomId={roomId}
+          currentUsername={currentUserId}
         />
         
         {isInRoom && collaborators.length > 0 && (
