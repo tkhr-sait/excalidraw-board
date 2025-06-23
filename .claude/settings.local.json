@@ -32,7 +32,9 @@
       "Bash(cat:*)",
       "Bash(chmod:*)",
       "Bash(./scripts/final-test.sh:*)",
-      "Bash(/workspace/scripts/final-test.sh:*)"
+      "Bash(/workspace/scripts/final-test.sh:*)",
+      "Bash(./scripts/deploy-docker.sh:*)",
+      "Bash(nc:*)"
     ],
     "deny": []
   }

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_WEBSOCKET_URL=ws://localhost:3002
+    ports:
+      - "80:80"
+    depends_on:
+      - excalidraw-room
+    networks:
+      - excalidraw-network
+
+  excalidraw-room:
+    image: excalidraw/excalidraw-room:latest
+    ports:
+      - "3002:80"
+    environment:
+      - PORT=80
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - excalidraw-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  excalidraw-network:
+    driver: bridge
