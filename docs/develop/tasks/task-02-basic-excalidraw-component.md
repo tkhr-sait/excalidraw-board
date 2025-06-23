@@ -98,11 +98,11 @@ export interface ExcalidrawBoardProps {
 ```
 
 ## 検証項目
-- [ ] `npm test` でテストが通ること
-- [ ] `npm run dev` で起動し、Excalidrawが表示されること
-- [ ] 描画ツールが正常に動作すること
-- [ ] 図形の作成、選択、移動、削除ができること
-- [ ] TypeScriptの型エラーがないこと
+- [x] `npm test` でテストが通ること
+- [x] `npm run dev` で起動し、Excalidrawが表示されること
+- [x] 描画ツールが正常に動作すること
+- [x] 図形の作成、選択、移動、削除ができること
+- [x] TypeScriptの型エラーがないこと
 
 ## 成果物
 - frontend/src/components/ExcalidrawBoard.tsx

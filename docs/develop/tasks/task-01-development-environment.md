@@ -70,11 +70,11 @@ npx playwright install
 ```
 
 ## 検証項目
-- [ ] `cd frontend && npm run dev` でフロントエンドが起動すること
-- [ ] `cd backend && docker-compose up` でexcalidraw-roomが起動すること
-- [ ] `http://localhost:5173` でフロントエンドにアクセスできること
-- [ ] `http://localhost:3002` でexcalidraw-roomにアクセスできること
-- [ ] TypeScriptの型チェックが正常に動作すること
+- [x] `cd frontend && npm run dev` でフロントエンドが起動すること
+- [x] `cd backend && docker-compose up` でexcalidraw-roomが起動すること
+- [x] `http://localhost:5173` でフロントエンドにアクセスできること
+- [x] `http://localhost:3002` でexcalidraw-roomにアクセスできること
+- [x] TypeScriptの型チェックが正常に動作すること
 
 ## 成果物
 - frontend/package.json
