@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  excalidraw-room:
+    image: excalidraw/excalidraw-room:latest
+    ports:
+      - "3002:80"
+    environment:
+      - PORT=80
+    restart: unless-stopped
