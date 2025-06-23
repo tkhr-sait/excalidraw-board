@@ -1,14 +1,12 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # カスタムWebSocketサーバー
+  # excalidraw-roomを利用するWebSocketサーバー
   websocket-server:
-    build:
-      context: ../server
-      dockerfile: ../docker/Dockerfile.server
+    image: excalidraw/excalidraw-room:latest
     container_name: excalidraw-websocket-server
     ports:
-      - "3002:3002"  # WebSocketサーバー
+      - "3002:3002" # WebSocketサーバー
     environment:
       - NODE_ENV=development
       - PORT=3002
@@ -29,7 +27,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_WEBSOCKET_SERVER_URL=http://localhost:3002
+      - VITE_WEBSOCKET_SERVER_URL=ws://localhost:3002
     networks:
       - excalidraw-network
     depends_on:

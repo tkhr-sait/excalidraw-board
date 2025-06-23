@@ -32,7 +32,8 @@
       "Bash(cat:*)",
       "Bash(chmod:*)",
       "Bash(./scripts/final-test.sh:*)",
-      "Bash(/workspace/scripts/final-test.sh:*)"
+      "Bash(/workspace/scripts/final-test.sh:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
   }

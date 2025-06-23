@@ -3,6 +3,7 @@ import {
   Excalidraw,
   MainMenu,
   WelcomeScreen,
+  LiveCollaborationTrigger,
 } from '@excalidraw/excalidraw';
 import type {
   ExcalidrawElement,
@@ -12,6 +13,7 @@ import type {
 import type { RoomUser, SceneUpdate, CollaboratorPointer } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import { Collab } from './components/collab/Collab';
+import type { CollabHandle } from './components/collab/Collab';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import './App.css';
@@ -34,6 +36,8 @@ function App() {
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  // Collab componentの参照を保持
+  const collabRef = useRef<CollabHandle | null>(null);
 
   // 初期データの読み込み
   useEffect(() => {
@@ -81,55 +85,71 @@ function App() {
     document.title = title;
   }, [currentRoomId, currentUsername, isCollaborating]);
 
-  // リモートシーンデータの受信（従来のSocket.IO方式）
-  useEffect(() => {
-    const handleSceneData = (data: SceneUpdate) => {
-      const excalidrawAPI = excalidrawAPIRef.current;
-      if (excalidrawAPI) {
-        console.log('Received scene data via socket.io:', data);
-        // Store received data for testing
-        if (typeof window !== 'undefined') {
-          (window as any).lastReceivedSceneData = data;
-        }
-        // Set flag to prevent feedback loop
-        isRemoteUpdateRef.current = true;
-        // Ensure collaborators is a Map object, not an array
-        const appState = {
-          ...data.appState,
-          collaborators: data.appState?.collaborators instanceof Map 
-            ? data.appState.collaborators 
-            : new Map()
-        };
-        excalidrawAPI.updateScene({
-          elements: data.elements,
-          appState: appState,
-        });
-      }
-    };
-
-    const handleCollaboratorPointer = (data: CollaboratorPointer) => {
-      console.log('Received pointer update via socket.io:', data);
-      setCollaboratorPointers(prev => {
-        const updated = new Map(prev);
-        updated.set(data.userId, data);
-        return updated;
-      });
-    };
-
-    socket.on('scene-data', handleSceneData);
-    socket.on('collaborator-pointer', handleCollaboratorPointer);
-
-    return () => {
-      socket.off('scene-data');
-      socket.off('collaborator-pointer');
-    };
-  }, [socket]);
+  // Socket events are now handled through encrypted broadcasts in Collab component
 
   // Collab コンポーネントからの同期データ受信
   const handleCollabSceneUpdate = useCallback((data: { elements: any[]; appState: any }) => {
     const excalidrawAPI = excalidrawAPIRef.current;
     if (excalidrawAPI) {
       console.log('Received scene update from Collab:', data.elements.length, 'elements');
+      
+      // Debug: Log element dimensions before applying update
+      const elementDebug = data.elements.map(el => ({
+        id: el.id?.substring(0, 8) + '...' || 'unknown',
+        type: el.type || 'unknown',
+        width: el.width || 0,
+        height: el.height || 0,
+        x: el.x || 0,
+        y: el.y || 0,
+        isDeleted: el.isDeleted || false
+      }));
+      console.log('App received elements:', elementDebug);
+      
+      // Validate element integrity before applying
+      const validElements = data.elements.filter(el => {
+        if (!el || el.isDeleted) return false;
+        
+        // Check for minimum valid dimensions
+        if (el.width !== undefined && el.width < 0.1) {
+          console.warn(`Element ${el.id} has invalid width: ${el.width}`);
+          return false;
+        }
+        if (el.height !== undefined && el.height < 0.1) {
+          console.warn(`Element ${el.id} has invalid height: ${el.height}`);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      if (validElements.length !== data.elements.length) {
+        console.warn(`Filtered out ${data.elements.length - validElements.length} invalid elements`);
+      }
+      
+      // Get current elements to merge with received elements
+      const currentElements = excalidrawAPI.getSceneElements();
+      
+      // Merge strategy: keep local elements that aren't in the received update
+      const elementMap = new Map();
+      
+      // Add current elements first
+      currentElements.forEach((el: any) => {
+        if (el && !el.isDeleted) {
+          elementMap.set(el.id, el);
+        }
+      });
+      
+      // Override with received elements
+      validElements.forEach((el: any) => {
+        if (el && !el.isDeleted) {
+          elementMap.set(el.id, el);
+        }
+      });
+      
+      const mergedElements = Array.from(elementMap.values());
+      
+      console.log(`Merging elements: ${currentElements.length} current + ${validElements.length} received = ${mergedElements.length} total`);
+      
       // Set flag to prevent feedback loop
       isRemoteUpdateRef.current = true;
       // Ensure collaborators is a Map object
@@ -140,7 +160,7 @@ function App() {
           : new Map()
       };
       excalidrawAPI.updateScene({
-        elements: data.elements,
+        elements: mergedElements,
         appState: appState,
       });
     }
@@ -170,18 +190,29 @@ function App() {
       
       console.log('Scene changed:', { elements: elements.length, isCollaborating });
       
+      // Debug: Log local element dimensions before broadcasting
+      if (isCollaborating && elements.length > 0) {
+        const localElementDebug = elements.map((el: any) => ({
+          id: el.id?.substring(0, 8) + '...' || 'unknown',
+          type: el.type || 'unknown',
+          width: el.width || 0,
+          height: el.height || 0,
+          x: el.x || 0,
+          y: el.y || 0,
+          isDeleted: el.isDeleted || false
+        }));
+        console.log('Local scene changed, elements:', localElementDebug);
+      }
+      
       // ローカルストレージへの保存
       if (!isCollaborating) {
         saveToLocalStorage({ elements, appState, files });
       }
       
-      // コラボレーション中はブロードキャスト（シンプルなSocket.IO方式）
-      if (isCollaborating && socket.isConnected) {
-        console.log('Broadcasting scene update via Socket.IO...');
-        socket.emit('scene-update', {
-          elements: elements,
-          appState: appState
-        });
+      // コラボレーション中はCollabコンポーネント経由でブロードキャスト
+      if (isCollaborating && collabRef.current) {
+        console.log('Broadcasting scene update via encrypted channel...');
+        collabRef.current.broadcastSceneUpdate(elements, appState);
       }
     },
     [isCollaborating, socket]
@@ -193,23 +224,25 @@ function App() {
     excalidrawAPIRef.current = api;
   }, []);
 
-  // デバッグ用: グローバルにsocket関数を公開
+  // デバッグ用: グローバルにsocket関数とExcalidraw APIを公開
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).socket = socket;
       (window as any).socketConnected = socket.isConnected;
       (window as any).isCollaborating = isCollaborating;
+      (window as any).excalidrawAPI = excalidrawAPIRef.current;
     }
-  }, [socket, isCollaborating]);
+  }, [socket, isCollaborating, excalidrawAPIRef.current]);
 
   // ポインター更新のハンドラ
   const handlePointerUpdate = useCallback(
     (payload: any) => {
-      if (isCollaborating && collaboration.isCollaborating && payload.pointer) {
-        collaboration.broadcastMouseLocation(payload.pointer);
+      if (isCollaborating && collabRef.current && payload.pointer) {
+        console.log('Broadcasting pointer update:', payload.pointer);
+        collabRef.current.broadcastPointerUpdate(payload.pointer.x, payload.pointer.y);
       }
     },
-    [isCollaborating, collaboration]
+    [isCollaborating]
   );
 
   // コラボレーション状態変更のハンドラ
@@ -250,6 +283,7 @@ function App() {
   return (
     <div className="app">
       <Collab
+        ref={collabRef}
         onCollaborationStateChange={handleCollaborationStateChange}
         onCollaboratorsChange={handleCollaboratorsChange}
         onSceneUpdate={handleCollabSceneUpdate}
@@ -275,6 +309,24 @@ function App() {
               toggleTheme: true,
             },
           }}
+          renderTopRightUI={() => (
+            <LiveCollaborationTrigger
+              isCollaborating={isCollaborating}
+              onSelect={() => {
+                if (!isCollaborating) {
+                  const joinButton = document.querySelector('[data-testid="collab-join-room-button"]') as HTMLButtonElement;
+                  if (joinButton) {
+                    joinButton.click();
+                  }
+                } else {
+                  const leaveButton = document.querySelector('[data-testid="collab-leave-room-button"]') as HTMLButtonElement;
+                  if (leaveButton) {
+                    leaveButton.click();
+                  }
+                }
+              }}
+            />
+          )}
         >
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
