@@ -12,11 +12,23 @@ export class SocketService {
   private roomKey: string | null = null;
   private socketInitialized: boolean = false;
   private broadcastedElementVersions: Map<string, number> = new Map();
+  private currentUrl: string | null = null;
+  private fallbackUrls: string[] = [];
+  private connectionRetryCount = 0;
 
-  connect(url: string): void {
+  connect(url: string, fallbackUrls: string[] = []): void {
     if (this.socket?.connected) {
       console.warn('Socket already connected');
       return;
+    }
+
+    this.currentUrl = url;
+    this.fallbackUrls = fallbackUrls;
+    this.connectionRetryCount = 0;
+
+    console.log('Connecting to WebSocket:', url);
+    if (fallbackUrls.length > 0) {
+      console.log('Fallback URLs available:', fallbackUrls);
     }
 
     this.socket = io(url, {
@@ -48,6 +60,9 @@ export class SocketService {
     this.roomKey = null;
     this.socketInitialized = false;
     this.broadcastedElementVersions.clear();
+    this.currentUrl = null;
+    this.fallbackUrls = [];
+    this.connectionRetryCount = 0;
   }
 
   isConnected(): boolean {
@@ -160,8 +175,13 @@ export class SocketService {
     });
 
     this.socket.on('connect_error', (error: Error) => {
-      console.warn('Connection error (retrying):', error.message);
-      this.handleConnectionError();
+      console.warn('Connection error:', error.message);
+      console.log('Connection details:', {
+        url: this.currentUrl,
+        transport: this.socket?.io?.engine?.transport?.name,
+        fallbacksAvailable: this.fallbackUrls.length
+      });
+      this.handleConnectionError(error);
     });
 
     this.socket.on('error', (error: any) => {
@@ -174,13 +194,54 @@ export class SocketService {
     this.reconnectAttempts = 0;
   }
 
-  private handleConnectionError(): void {
+  private handleConnectionError(_error: Error): void {
     this.reconnectAttempts++;
+    this.connectionRetryCount++;
     
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+    console.log(`Connection attempt ${this.connectionRetryCount} failed for ${this.currentUrl}`);
+    
+    // Try fallback URLs after initial attempts
+    if (this.reconnectAttempts >= 3 && this.fallbackUrls.length > 0) {
+      console.log('Trying fallback URLs...');
+      this.tryFallbackUrls();
+    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.warn(`Max reconnection attempts reached (${this.maxReconnectAttempts}). Will continue trying with Socket.IO auto-reconnect.`);
       // Reset counter to allow continued attempts
       this.reconnectAttempts = 0;
+    }
+  }
+
+  private tryFallbackUrls(): void {
+    if (this.fallbackUrls.length === 0) {
+      return;
+    }
+
+    // Try each fallback URL
+    const nextUrl = this.fallbackUrls.shift();
+    if (nextUrl) {
+      console.log(`Trying fallback URL: ${nextUrl}`);
+      
+      // Disconnect current socket
+      if (this.socket) {
+        this.socket.disconnect();
+      }
+      
+      // Try connecting to fallback URL
+      this.currentUrl = nextUrl;
+      this.reconnectAttempts = 0;
+      
+      this.socket = io(nextUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 3, // Shorter attempts for fallbacks
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 3000,
+        randomizationFactor: 0.5,
+        timeout: 5000, // Shorter timeout for fallbacks
+        forceNew: true,
+      });
+
+      this.setupBaseEventListeners();
     }
   }
 

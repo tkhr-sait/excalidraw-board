@@ -6,7 +6,6 @@ import {
   LiveCollaborationTrigger,
   reconcileElements,
   restoreElements,
-  CaptureUpdateAction,
   getSceneVersion,
 } from '@excalidraw/excalidraw';
 import type {
@@ -184,10 +183,9 @@ function App() {
     if (excalidrawAPI) {
       console.log('Official-style handleRemoteSceneUpdate:', elements.length, 'elements');
       
-      // 公式方式: CaptureUpdateAction.NEVERでリモート更新を適用
+      // 公式方式: リモート更新を適用
       excalidrawAPI.updateScene({
         elements: elements as any,
-        captureUpdate: CaptureUpdateAction.NEVER, // 重要: 公式と同じ
       });
       
       console.log('Remote scene updated with CaptureUpdateAction.NEVER');
@@ -201,16 +199,16 @@ function App() {
     
     console.log('Official-style _reconcileElements:', remoteElements.length, 'remote elements');
     
-    const localElements = excalidrawAPI.getSceneElementsIncludingDeleted();
+    const localElements = excalidrawAPI.getSceneElements();
     const appState = excalidrawAPI.getAppState();
     const restoredRemoteElements = restoreElements(remoteElements, null);
     
     console.log(`Reconciliation: ${localElements.length} local + ${remoteElements.length} remote`);
     
     const reconciledElements = reconcileElements(
-      localElements,
+      localElements as any,
       restoredRemoteElements as any,
-      appState,
+      appState as any,
     );
     
     console.log(`Reconciled result: ${reconciledElements.length} elements`);

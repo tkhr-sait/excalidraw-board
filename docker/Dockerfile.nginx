@@ -1,0 +1,30 @@
+FROM nginx:alpine
+
+# OpenSSLをインストール
+RUN apk add --no-cache openssl
+
+# nginx設定をコピー
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# 起動スクリプトを作成
+COPY <<EOF /start.sh
+#!/bin/sh
+echo "Starting nginx with SSL certificate generation..."
+mkdir -p /etc/nginx/ssl
+
+# SSL証明書を直接生成
+echo "Generating SSL certificates..."
+openssl req -x509 -newkey rsa:4096 -keyout /etc/nginx/ssl/key.pem -out /etc/nginx/ssl/cert.pem -days 36500 -nodes -subj "/C=JP/ST=Tokyo/L=Tokyo/O=ExcalidrawApp/CN=\${SERVER_HOST:-localhost}"
+
+chmod 600 /etc/nginx/ssl/key.pem
+chmod 644 /etc/nginx/ssl/cert.pem
+
+echo "SSL certificates ready, starting nginx..."
+nginx -g "daemon off;"
+EOF
+
+RUN chmod +x /start.sh
+
+EXPOSE 80 443
+
+CMD ["/start.sh"]

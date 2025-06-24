@@ -30,7 +30,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/socket.io': {
-        target: 'ws://localhost:3002',
+        target: process.env.VITE_WEBSOCKET_SERVER_URL || 'ws://localhost:3002',
         ws: true,
         changeOrigin: true,
       },

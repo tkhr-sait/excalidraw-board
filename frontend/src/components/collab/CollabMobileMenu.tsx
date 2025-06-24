@@ -15,7 +15,7 @@ export function CollabMobileMenu({
   isConnected,
   isInRoom,
   roomId,
-  collaborators,
+  collaborators: _collaborators,
   currentUserId,
   onUsernameChange,
 }: CollabMobileMenuProps) {
