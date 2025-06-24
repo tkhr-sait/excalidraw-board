@@ -102,6 +102,8 @@ export interface ExcalidrawImperativeAPI {
     }
   ) => void;
   refresh: () => void;
+  // Check if getSceneElementsIncludingDeleted exists
+  getSceneElementsIncludingDeleted?: () => readonly ExcalidrawElement[];
 }
 
 

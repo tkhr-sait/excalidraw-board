@@ -16,6 +16,7 @@ import type {
 import type { RoomUser, CollaboratorPointer } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import { getOrCreateUsername, saveUsername } from './utils/random-names';
+import { getSceneElementsIncludingDeleted, RecentlyDeletedElementsTracker } from './utils/element-sync';
 import { Collab } from './components/collab/Collab';
 import type { CollabHandle } from './components/collab/Collab';
 import { CollabFooter } from './components/collab/CollabFooter';
@@ -51,6 +52,9 @@ function App() {
   const collabRef = useRef<CollabHandle | null>(null);
   // Track last broadcasted/received scene version to prevent echo
   const lastBroadcastedOrReceivedSceneVersionRef = useRef<number>(-1);
+  // Track recently deleted elements for proper sync
+  const recentlyDeletedTracker = useRef(new RecentlyDeletedElementsTracker());
+  const lastElementsRef = useRef<readonly ExcalidrawElement[]>([]);
 
   // URLパラメータからRoom情報を取得
   useEffect(() => {
@@ -283,10 +287,17 @@ function App() {
   useEffect(() => {
     const handleBroadcastFullScene = () => {
       if (isCollaborating && collabRef.current && excalidrawAPIRef.current) {
-        const elements = excalidrawAPIRef.current.getSceneElements();
-        console.log('Broadcasting full scene to new user:', elements.length, 'elements');
-        // Force sync all elements
-        collaboration.broadcastScene(elements.map(el => ({ ...el, version: el.version || 1 })), true);
+        // Get elements including recently deleted ones for proper sync
+        const elementsIncludingDeleted = getSceneElementsIncludingDeleted(
+          excalidrawAPIRef.current,
+          recentlyDeletedTracker.current.getRecentlyDeletedElements()
+        );
+        console.log('Broadcasting full scene to new user:', elementsIncludingDeleted.length, 'elements (including recently deleted)');
+        // Force sync all elements including recently deleted ones
+        collaboration.broadcastScene(elementsIncludingDeleted.map(el => ({ 
+          ...el, 
+          version: el.version || 1 
+        })), true);
       }
     };
     
@@ -299,9 +310,31 @@ function App() {
     (elements: any, appState: any, files: any) => {
       console.log('Scene changed:', { elements: elements.length, isCollaborating });
       
-      // 公式方式: シンプルなコラボレーション同期
-      if (isCollaborating && collaboration.isCollaborating) {
-        collaboration.syncElements(elements);
+      // Track element deletions for proper sync
+      if (excalidrawAPIRef.current) {
+        recentlyDeletedTracker.current.trackElementDeletions(lastElementsRef.current, elements);
+        lastElementsRef.current = elements;
+        
+        // Periodic cleanup of old deleted elements
+        recentlyDeletedTracker.current.cleanup();
+      }
+      
+      // 公式方式: コラボレーション同期（削除された要素も含む）
+      if (isCollaborating && collaboration.isCollaborating && excalidrawAPIRef.current) {
+        // Get elements including recently deleted ones for proper sync
+        const elementsForSync = getSceneElementsIncludingDeleted(
+          excalidrawAPIRef.current,
+          recentlyDeletedTracker.current.getRecentlyDeletedElements()
+        );
+        console.log('Syncing elements including recently deleted:', {
+          totalElements: elementsForSync.length,
+          currentElements: elements.length,
+          recentlyDeleted: elementsForSync.length - elements.length
+        });
+        collaboration.syncElements(elementsForSync.map(el => ({ 
+          ...el, 
+          version: el.version || 1 
+        })));
       }
       
       // ローカルストレージへの保存

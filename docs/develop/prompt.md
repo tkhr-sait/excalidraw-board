@@ -274,3 +274,17 @@ docker/docker-compose.yml で起動した場合、Roomにjoinできない
 │ > ユーザ名はローカルストレージに保存される仕様ですか？
 │ > すべて保存されるようにし、URL経由の場合もgetOrCreateUsernameを利用してください
 ```
+
+- docker
+
+```
+│ > 本番環境はdocker composeで、frontend(excalidraw-board),backend(excalidraw-room),nginx(reverse-proxy/https自己署名証明書)のみの構成とする
+│ > docker-composeのdev版がほしい。localhostのみで良い
+```
+
+- 削除同期
+
+```
+│ > リアルタイムコラボレーションで削除しても共有キャンバスから消えない。playwrightで動作確認とスクリーンショットを確認し、修正してくだ   │
+│   さい。@/tmp/excalidraw/excalidraw-appを参考にしてください。
+```

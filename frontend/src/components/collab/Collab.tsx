@@ -3,6 +3,7 @@ import throttle from 'lodash.throttle';
 import { useSocket } from '../../hooks/useSocket';
 import { SyncPortal } from '../../services/sync-portal';
 import { socketService } from '../../services/socket';
+import { isSyncableElement } from '../../utils/element-sync';
 import type { CollaborationState, RoomFormData } from '../../types/collaboration';
 import type { RoomUser, SocketUpdateData } from '../../types/socket';
 import { WS_SUBTYPES } from '../../types/socket';
@@ -197,19 +198,36 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
           }));
           console.log('Received elements details:', receivedElements);
           
-          // Filter and validate elements before updating
+          // Filter and validate elements before updating (including deleted elements within timeout)
           const validElements = decryptedData.payload.elements.filter((el: any) => {
-            const isValid = el && el.id && el.type && !el.isDeleted && 
+            // Basic validation: must have id, type, and valid position
+            const hasBasicData = el && el.id && el.type && 
                    typeof el.x === 'number' && typeof el.y === 'number';
-            if (!isValid && el) {
-              console.log('Filtered out invalid element:', {
+            
+            if (!hasBasicData) {
+              if (el) {
+                console.log('Filtered out element with invalid basic data:', {
+                  id: el.id,
+                  type: el.type,
+                  hasValidPosition: typeof el.x === 'number' && typeof el.y === 'number'
+                });
+              }
+              return false;
+            }
+            
+            // Use isSyncableElement to handle deletion timeout logic properly
+            const isSyncable = isSyncableElement(el);
+            if (!isSyncable && el.isDeleted) {
+              console.log('Filtered out expired deleted element:', {
                 id: el.id,
                 type: el.type,
                 isDeleted: el.isDeleted,
-                hasValidPosition: typeof el.x === 'number' && typeof el.y === 'number'
+                updated: el.updated,
+                age: el.updated ? (Date.now() - el.updated) / (1000 * 60 * 60) + ' hours' : 'unknown'
               });
             }
-            return isValid;
+            
+            return isSyncable;
           });
           
           console.log('Valid elements to update:', validElements.length, 'out of', decryptedData.payload.elements.length);
@@ -378,15 +396,25 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     }));
     console.log('Broadcasting elements:', debugElements);
 
-    // Filter out invalid elements before broadcasting
-    const validElements = elements.filter(el => {
-      return el && el.id && !el.isDeleted;
+    // Filter elements using isSyncableElement (includes deleted elements within timeout)
+    const syncableElements = elements.filter(el => {
+      if (!el || !el.id) {
+        return false;
+      }
+      return isSyncableElement(el);
+    });
+    
+    console.log('Broadcasting elements:', {
+      total: elements.length,
+      syncable: syncableElements.length,
+      deleted: syncableElements.filter(el => el.isDeleted).length,
+      active: syncableElements.filter(el => !el.isDeleted).length
     });
 
     const data: SocketUpdateData = {
       type: WS_SUBTYPES.UPDATE,
       payload: {
-        elements: validElements,
+        elements: syncableElements,
         appState
       }
     };
