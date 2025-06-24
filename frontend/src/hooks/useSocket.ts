@@ -111,6 +111,13 @@ export function useSocket(options: UseSocketOptions = {}) {
     socketService.leaveRoom(roomId);
   }, []);
 
+  const updateUsername = useCallback(
+    (roomId: string, username: string) => {
+      socketService.updateUsername(roomId, username);
+    },
+    []
+  );
+
   return {
     emit,
     on,
@@ -119,6 +126,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     disconnect,
     joinRoom,
     leaveRoom,
+    updateUsername,
     isConnected,
   };
 }

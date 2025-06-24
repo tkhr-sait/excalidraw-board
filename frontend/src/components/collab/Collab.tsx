@@ -36,6 +36,7 @@ export interface CollabHandle {
   broadcastPointerUpdate: (x: number, y: number, selectedElementIds?: readonly string[]) => Promise<void>;
   joinRoom: (data: RoomFormData) => void;
   leaveRoom: () => void;
+  updateUsername: (newUsername: string) => void;
   getState: () => CollaborationState;
 }
 
@@ -411,14 +412,34 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     await socketService.broadcastEncryptedData(data, true, state.roomId);
   }, 16), [state.isInRoom, state.roomId, state.username, roomKey]); // 16ms throttle like Excalidraw's CURSOR_SYNC_TIMEOUT
 
+  // ユーザー名更新処理
+  const handleUpdateUsername = useCallback((newUsername: string) => {
+    if (!state.isInRoom) {
+      console.warn('Cannot update username: not in a room');
+      return;
+    }
+
+    setState(prev => ({
+      ...prev,
+      username: newUsername,
+    }));
+
+    // Update the room with new username
+    if (state.roomId) {
+      socket.updateUsername(state.roomId, newUsername);
+      console.log('Username updated in room:', { roomId: state.roomId, newUsername });
+    }
+  }, [socket, state.isInRoom, state.roomId]);
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     broadcastSceneUpdate,
     broadcastPointerUpdate,
     joinRoom: handleJoinRoom,
     leaveRoom: handleLeaveRoom,
+    updateUsername: handleUpdateUsername,
     getState: () => state
-  }), [broadcastSceneUpdate, broadcastPointerUpdate, handleJoinRoom, handleLeaveRoom, state]);
+  }), [broadcastSceneUpdate, broadcastPointerUpdate, handleJoinRoom, handleLeaveRoom, handleUpdateUsername, state]);
 
   return (
     <div className="collab-container">

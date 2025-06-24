@@ -1,6 +1,6 @@
 import { useDevice } from '@excalidraw/excalidraw';
 import { CollabStatusIndicator } from './CollabStatusIndicator';
-import { CollaboratorsList } from './CollaboratorsList';
+import { EditableUsername } from './EditableUsername';
 
 interface CollabMobileMenuProps {
   isConnected: boolean;
@@ -8,6 +8,7 @@ interface CollabMobileMenuProps {
   roomId: string | null;
   collaborators: any[];
   currentUserId: string;
+  onUsernameChange?: (newUsername: string) => void;
 }
 
 export function CollabMobileMenu({
@@ -16,6 +17,7 @@ export function CollabMobileMenu({
   roomId,
   collaborators,
   currentUserId,
+  onUsernameChange,
 }: CollabMobileMenuProps) {
   const device = useDevice();
 
@@ -36,12 +38,13 @@ export function CollabMobileMenu({
         isConnected={isConnected}
         isInRoom={isInRoom}
         roomId={roomId}
+        currentUsername={currentUserId}
       />
       
-      {isInRoom && collaborators.length > 0 && (
-        <CollaboratorsList 
-          collaborators={collaborators}
-          currentUserId={currentUserId}
+      {isInRoom && currentUserId && (
+        <EditableUsername 
+          username={currentUserId}
+          onUsernameChange={onUsernameChange}
         />
       )}
     </div>

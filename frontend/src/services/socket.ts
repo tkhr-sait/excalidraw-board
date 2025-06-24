@@ -80,6 +80,25 @@ export class SocketService {
     this.broadcastedElementVersions.clear();
   }
 
+  updateUsername(roomId: string, username: string): void {
+    if (!this.socket) {
+      console.error('Cannot update username: Socket not connected');
+      return;
+    }
+
+    // Update local room info
+    this.roomId = roomId;
+    
+    // Update username in localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('excalidraw-collab-username', username);
+    }
+
+    // Emit username update to server (if backend supports it)
+    this.socket.emit('update-username', { roomId, username });
+    console.log('Username update sent to server:', { roomId, username });
+  }
+
   emit<K extends SocketEventName>(
     event: K,
     data: Parameters<SocketEvents[K]>[0]

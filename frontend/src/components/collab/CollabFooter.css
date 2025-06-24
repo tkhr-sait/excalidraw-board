@@ -14,6 +14,37 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Room info styles */
+.collab-footer-container .room-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+/* Copy button styles */
+.collab-footer-container .room-copy-button {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+  color: var(--color-text-secondary);
+}
+
+.collab-footer-container .room-copy-button:hover {
+  background: var(--color-surface-high);
+  border-color: var(--color-border);
+}
+
+.collab-footer-container .room-copy-button:active {
+  transform: scale(0.95);
+}
+
 /* Override the original collab-toolbar styles for footer layout */
 .collab-footer-container .collab-toolbar {
   position: static;
@@ -43,7 +74,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.875rem;
+  font-size: 12px;
 }
 
 .collab-status-indicator .room-label {
@@ -67,6 +98,24 @@
   box-shadow: none;
   margin: 0;
   padding: 0;
+}
+
+/* Styles for editable username in footer */
+.collab-footer-container .editable-username {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 4px 8px;
+}
+
+.collab-footer-container .editable-username.clickable:hover {
+  background: var(--color-surface-high, #f0f0f0);
+}
+
+.collab-footer-container .editable-username.editing {
+  background: var(--color-surface-high, #f0f0f0);
+  border: 1px solid var(--color-primary, #007bff);
 }
 
 /* Responsive design for smaller screens */

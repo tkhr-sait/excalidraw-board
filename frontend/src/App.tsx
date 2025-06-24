@@ -16,6 +16,7 @@ import type {
 } from './types/excalidraw';
 import type { RoomUser, CollaboratorPointer } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
+import { getOrCreateUsername, saveUsername } from './utils/random-names';
 import { Collab } from './components/collab/Collab';
 import type { CollabHandle } from './components/collab/Collab';
 import { CollabFooter } from './components/collab/CollabFooter';
@@ -61,12 +62,15 @@ function App() {
     
     console.log('URL params:', { roomIdFromUrl, usernameFromUrl, search: window.location.search });
     
-    if (roomIdFromUrl && usernameFromUrl) {
-      console.log('Setting up URL join for room:', roomIdFromUrl, 'username:', usernameFromUrl);
+    if (roomIdFromUrl) {
+      // Use saved username or generate new one if not provided
+      const username = usernameFromUrl || getOrCreateUsername();
+      
+      console.log('Setting up URL join for room:', roomIdFromUrl, 'username:', username);
       // URL経由でRoom参加 - 自動的にルームに参加するためのペンディング状態を設定
       setCurrentRoomId(roomIdFromUrl);
-      setCurrentUsername(usernameFromUrl);
-      setPendingUrlJoin({ roomId: roomIdFromUrl, username: usernameFromUrl });
+      setCurrentUsername(username);
+      setPendingUrlJoin({ roomId: roomIdFromUrl, username: username });
       
       // URLパラメータをクリア（履歴汚染防止）
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -433,6 +437,16 @@ function App() {
     }
   }, []);
 
+  // ユーザー名変更処理
+  const handleUsernameChange = useCallback((newUsername: string) => {
+    setCurrentUsername(newUsername);
+    saveUsername(newUsername); // Save to localStorage
+    if (collabRef.current) {
+      collabRef.current.updateUsername(newUsername);
+    }
+    console.log('Username changed to:', newUsername);
+  }, []);
+
   return (
     <div className="app">
       {/* Hidden Collab component for backend functionality */}
@@ -505,6 +519,7 @@ function App() {
               roomId={currentRoomId}
               collaborators={collaborators}
               currentUserId={currentUsername || ''}
+              onUsernameChange={handleUsernameChange}
             />
           </MainMenu>
           <WelcomeScreen>
@@ -513,14 +528,14 @@ function App() {
             <WelcomeScreen.Hints.HelpHint />
           </WelcomeScreen>
           
-          {/* Desktop collaboration footer */}
-          <CollabFooter
-            isConnected={socket.isConnected}
-            isInRoom={isCollaborating}
-            roomId={currentRoomId}
-            collaborators={collaborators}
-            currentUserId={currentUsername || ''}
-          />
+          {/* Desktop collaboration footer - only show when sharing */}
+          {isCollaborating && (
+            <CollabFooter
+              roomId={currentRoomId}
+              currentUserId={currentUsername || ''}
+              onUsernameChange={handleUsernameChange}
+            />
+          )}
         </Excalidraw>
       </div>
       
