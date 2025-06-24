@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { socketService } from '../services/socket';
 import type { SocketEventName, SocketEvents } from '../types/socket';
 
@@ -14,14 +14,32 @@ export function useSocket(options: UseSocketOptions = {}) {
   } = options;
 
   const listenersRef = useRef<Map<string, Set<Function>>>(new Map());
+  const [isConnected, setIsConnected] = useState(socketService.isConnected());
 
   useEffect(() => {
     if (autoConnect && !socketService.isConnected()) {
       socketService.connect(url);
     }
 
+    // Listen for connection state changes
+    const handleConnect = () => {
+      console.log('useSocket: Socket connected, updating state');
+      setIsConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log('useSocket: Socket disconnected, updating state');
+      setIsConnected(false);
+    };
+
+    socketService.on('connect', handleConnect);
+    socketService.on('disconnect', handleDisconnect);
+
     return () => {
       // コンポーネントがアンマウントされるときにリスナーをクリア
+      socketService.off('connect', handleConnect);
+      socketService.off('disconnect', handleDisconnect);
+      
       listenersRef.current.forEach((callbacks, event) => {
         callbacks.forEach((callback) => {
           socketService.off(event as SocketEventName, callback as any);
@@ -101,6 +119,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     disconnect,
     joinRoom,
     leaveRoom,
-    isConnected: socketService.isConnected(),
+    isConnected,
   };
 }

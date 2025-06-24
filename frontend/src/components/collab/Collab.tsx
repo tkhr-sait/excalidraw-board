@@ -316,7 +316,14 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
         error: null,
       }));
       
+      console.log('Calling onCollaborationStateChange with:', {
+        collaborating: true,
+        roomKey: deterministicKey,
+        roomId: data.roomId,
+        username: data.username
+      });
       onCollaborationStateChange?.(true, deterministicKey, data.roomId, data.username);
+      console.log('onCollaborationStateChange called successfully');
     } catch (error) {
       setState(prev => ({
         ...prev,

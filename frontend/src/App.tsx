@@ -83,18 +83,34 @@ function App() {
       socketConnected: socket.isConnected
     });
     
-    if (pendingUrlJoin && collabRef.current) {
-      if (socket.isConnected) {
-        console.log('Auto-joining room from URL parameters:', pendingUrlJoin);
-        setIsConnecting(true);
-        setRoomDialogError(null);
+    if (pendingUrlJoin && collabRef.current && socket.isConnected) {
+      console.log('Auto-joining room from URL parameters:', pendingUrlJoin);
+      setIsConnecting(true);
+      setRoomDialogError(null);
+      
+      // Use a timeout to ensure all components are ready
+      const timeoutId = setTimeout(() => {
         try {
-          collabRef.current.joinRoom({
-            roomId: pendingUrlJoin.roomId,
-            username: pendingUrlJoin.username
-          });
-          console.log('joinRoom called successfully for URL login');
-          setPendingUrlJoin(null); // ペンディング状態をクリア
+          if (collabRef.current) {
+            collabRef.current.joinRoom({
+              roomId: pendingUrlJoin.roomId,
+              username: pendingUrlJoin.username
+            });
+            console.log('joinRoom called successfully for URL login');
+            
+            // Set a timeout to check if collaboration started
+            setTimeout(() => {
+              if (!isCollaborating) {
+                console.warn('URL join may have failed - collaboration not started after 2 seconds');
+                // Don't clear pendingUrlJoin yet, let user try manually
+                setIsConnecting(false);
+                setShowRoomDialog(true);
+              } else {
+                console.log('URL join successful - collaboration started');
+                setPendingUrlJoin(null); // ペンディング状態をクリア
+              }
+            }, 2000);
+          }
         } catch (error) {
           console.error('Error joining room from URL:', error);
           setRoomDialogError(error instanceof Error ? error.message : 'Unknown error occurred');
@@ -102,11 +118,13 @@ function App() {
           setShowRoomDialog(true); // エラー時はダイアログを表示
           setPendingUrlJoin(null);
         }
-      } else {
-        console.log('Socket not connected yet, waiting for connection...');
-      }
+      }, 100); // Small delay to ensure components are ready
+      
+      return () => clearTimeout(timeoutId);
+    } else if (pendingUrlJoin && !socket.isConnected) {
+      console.log('Socket not connected yet, waiting for connection...');
     }
-  }, [pendingUrlJoin, socket.isConnected]);
+  }, [pendingUrlJoin, socket.isConnected, isCollaborating]);
 
   // 初期データの読み込み
   useEffect(() => {
