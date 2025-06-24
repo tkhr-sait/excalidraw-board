@@ -194,3 +194,62 @@ excalidraw-roomをdocker compose起動し、e2eテストも実施してくださ
 ```
 docker/docker-compose.yml で起動した場合、Roomにjoinできない
 ```
+
+## fix リアルタイムコラボレーション２
+
+- リアルタイムコラボレーションが動かなくなっていたので修正
+
+```
+│ > ブラウザ２つ立ち上げてリアルタイムコラボレーションを試しましたが、四角などの図形描画が同期されません。playwrightで動作確認とコンソールの確認を行い、同期されるよう修正してください。
+│ > @/tmp/excalidraw の excalidraw-roomとの通信方法をリポジトリに適用してください。firebaseは関連処理は今回対応不要
+│ > リアルタイムコラボレーション機能を完成させ、playwrightで動作確認してください
+│ > ブラウザ２つ立ち上げてリアルタイムコラボレーションを試しましたが、四角などの図形描画が同期されません。playwrightで動作確認とコンソールの確認を行い、同期されるよう修正してください。
+│ > 図形描画の同期については、実際の描画操作時にhandleChangeが適切な要素データを受け取れるよう、@/tmp/excalidraw の collab の通信方法をリポジトリに適用してください。 use context7
+│ > excalidraw の LiveCollaborationTrigger を利用する。use context7
+│ > ブラウザ２つ立ち上げてリアルタイムコラボレーションを試しましたが、四角などの図形描画が同期されません。playwrightで動作確認とコンソールの確認を行い、同期されるよう修正してください。
+│ > docker-compose.yml docker-compose.dev.yml 見直し
+│ > excalidraw に用意されている LiveCollaborationTriggerと、接続状態の表示はカスタムツールバーを利用してください。use context7
+│ > playwrightでe2e動作確認してください
+│ > docker compose -f docker/docker-compose.yml up でエラー。target websocket-server: failed to solve: process "/bin/sh -c npm ci --only=production" did not complete successfully: exit code: 1
+│ > @docker/docker-compose.yml のwebsocket-serverはexcalidraw-roomを利用するよう変更。use context7
+│ > collabのイベント名を https://github.com/excalidraw/excalidraw-room/blob/master/src/index.ts のイベント名に合わせる
+│ > ブラウザで起動したところエラー。playwrightで確認しつつ修正してください。Uncaught SyntaxError: The requested module '/src/components/collab/Collab.tsx' does not provide an export named 'CollabHandle' (at App.tsx:15:18)
+│ > playwrightでe2e動作確認してください
+│ > ブラウザ２つ立ち上げてリアルタイムコラボレーションを試しましたが、四角などの図形描画が同期されません。playwrightで動作確認とコンソールの確認を行い、同期されるよう修正してください。
+│ > ブラウザで起動したところエラー。playwrightで確認しつつ修正してください。socket__io-client.js?v=a6be85a5:1059 WebSocket connection to 'ws://localhost:3002/socket.io/?EIO=4&transport=websocket' failed:
+│ > リアルタイム図形同期は成功しましたが、図形サイズが最小となっている
+```
+
+- ツールバー整理
+
+```
+│ > CollabToolbarを、excalidrawのFooterで実現してください。use context7
+│ > 関連するテストを修正してください
+│ > エラー。playwrightを確認し修正してください。
+│ > FooterにはJoin Roomを表示せず、画面右上の Shareボタンのみで接続制御するようにしてください
+│ > excalidrawのLiveCollaborationTrigger仕様を確認し、共同編集者の数が表示されるようにしてください use context7
+│ > Footerは１行に収まるよう表示をコンパクトにする。ユーザ名は１文字アイコンのみとし、人数多い場合は省略。全量はtooltipなどで見えるようにする。
+│ > Room共有をURLで行えるようにする。FooterのRoom表示でURLコピー可能
+│ > URL経由のログインの場合、Shareボタンを押さないと、Collaboratingにならない。playwrightで確認し、修正してください
+│ > playwrightのe2eテストの過不足を確認し、テストケース修正、正常終了することを確認する。
+```
+
+- 動作修正.. 不毛..
+
+```
+│ > リアルタイムコラボレーションの図形描画などの方式を @/tmp/excalidraw/excalidraw-app/App.tsx @/tmp/excalidraw/excalidraw-app/collab と同一になるよう修正し、playwrightで動作確認してください
+│ > リアルタイムコラボレーションの競合解決の方式を @/tmp/excalidraw/excalidraw-app/App.tsx @/tmp/excalidraw/excalidraw-app/collab と同一になるよう修正し、playwrightで動作確認してください
+│ > リアルタイムコラボレーションのマウス位置共有の方式を @/tmp/excalidraw/excalidraw-app/App.tsx @/tmp/excalidraw/excalidraw-app/collab と同一になるよう修正し、playwrightで動作確認してください
+│ > リアルタイムコラボレーションのマウス位置共有にユーザ名を表示したい
+│ > リアルタイムコラボレーションの　TODO： 選択中の要素IDを渡す を解消したい
+│ > ブラウザ２つ立ち上げてリアルタイムコラボレーションを試しましたが、四角などの図形描画が同期されません。playwrightで動作確認とコンソールの確認を行い、同期されるよう修正してください。修正方法は @/tmp/excalidraw/excalidraw-app と同じ方法となるようにしてください
+│ > 修正を適用し、playwrightで動作確認とコンソールの確認を行い、スクリーンショットも確認してください
+│ > ブラウザ２つ立ち上げてリアルタイムコラボレーションを試しましたが、四角などの図形描画が同期されません。playwrightで動作確認とコンソールの確認を行い、スクリーンショットも確認してください
+```
+
+- plan モード
+
+```
+│ > 改善が必要な部分の対応方法を調査、修正し、playwrightで動作確認とコンソールの確認を行い、スクリーンショットも確認してください
+│ > @/tmp/excalidraw/excalidraw-app の方式も参考に計画してください
+```

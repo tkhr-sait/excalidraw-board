@@ -4,6 +4,10 @@ import {
   MainMenu,
   WelcomeScreen,
   LiveCollaborationTrigger,
+  reconcileElements,
+  restoreElements,
+  CaptureUpdateAction,
+  getSceneVersion,
 } from '@excalidraw/excalidraw';
 import type {
   ExcalidrawElement,
@@ -45,6 +49,8 @@ function App() {
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   // Collab componentの参照を保持
   const collabRef = useRef<CollabHandle | null>(null);
+  // Track last broadcasted/received scene version to prevent echo
+  const lastBroadcastedOrReceivedSceneVersionRef = useRef<number>(-1);
 
   // URLパラメータからRoom情報を取得
   useEffect(() => {
@@ -150,135 +156,140 @@ function App() {
 
   // Socket events are now handled through encrypted broadcasts in Collab component
 
-  // Collab コンポーネントからの同期データ受信
-  const handleCollabSceneUpdate = useCallback((data: { elements: any[]; appState: any }) => {
+  // 公式方式: シンプルなremote scene update処理
+  const handleRemoteSceneUpdate = useCallback((elements: any[]) => {
     const excalidrawAPI = excalidrawAPIRef.current;
     if (excalidrawAPI) {
-      console.log('Received scene update from Collab:', data.elements.length, 'elements');
+      console.log('Official-style handleRemoteSceneUpdate:', elements.length, 'elements');
       
-      // Debug: Log element dimensions before applying update
-      const elementDebug = data.elements.map(el => ({
-        id: el.id?.substring(0, 8) + '...' || 'unknown',
-        type: el.type || 'unknown',
-        width: el.width || 0,
-        height: el.height || 0,
-        x: el.x || 0,
-        y: el.y || 0,
-        isDeleted: el.isDeleted || false
-      }));
-      console.log('App received elements:', elementDebug);
-      
-      // Validate element integrity before applying
-      const validElements = data.elements.filter(el => {
-        if (!el || el.isDeleted) return false;
-        
-        // Check for minimum valid dimensions
-        if (el.width !== undefined && el.width < 0.1) {
-          console.warn(`Element ${el.id} has invalid width: ${el.width}`);
-          return false;
-        }
-        if (el.height !== undefined && el.height < 0.1) {
-          console.warn(`Element ${el.id} has invalid height: ${el.height}`);
-          return false;
-        }
-        
-        return true;
-      });
-      
-      if (validElements.length !== data.elements.length) {
-        console.warn(`Filtered out ${data.elements.length - validElements.length} invalid elements`);
-      }
-      
-      // Get current elements to merge with received elements
-      const currentElements = excalidrawAPI.getSceneElements();
-      
-      // Merge strategy: keep local elements that aren't in the received update
-      const elementMap = new Map();
-      
-      // Add current elements first
-      currentElements.forEach((el: any) => {
-        if (el && !el.isDeleted) {
-          elementMap.set(el.id, el);
-        }
-      });
-      
-      // Override with received elements
-      validElements.forEach((el: any) => {
-        if (el && !el.isDeleted) {
-          elementMap.set(el.id, el);
-        }
-      });
-      
-      const mergedElements = Array.from(elementMap.values());
-      
-      console.log(`Merging elements: ${currentElements.length} current + ${validElements.length} received = ${mergedElements.length} total`);
-      
-      // Set flag to prevent feedback loop
-      isRemoteUpdateRef.current = true;
-      // Ensure collaborators is a Map object
-      const appState = {
-        ...data.appState,
-        collaborators: data.appState?.collaborators instanceof Map 
-          ? data.appState.collaborators 
-          : new Map()
-      };
+      // 公式方式: CaptureUpdateAction.NEVERでリモート更新を適用
       excalidrawAPI.updateScene({
-        elements: mergedElements,
-        appState: appState,
+        elements: elements as any,
+        captureUpdate: CaptureUpdateAction.NEVER, // 重要: 公式と同じ
       });
+      
+      console.log('Remote scene updated with CaptureUpdateAction.NEVER');
     }
   }, []);
 
-  const handleCollabPointerUpdate = useCallback((data: { userId: string; x: number; y: number }) => {
-    console.log('Received pointer update from Collab:', data);
+  // 公式方式: reconciliation処理
+  const _reconcileElements = useCallback((remoteElements: any[]) => {
+    const excalidrawAPI = excalidrawAPIRef.current;
+    if (!excalidrawAPI) return [];
+    
+    console.log('Official-style _reconcileElements:', remoteElements.length, 'remote elements');
+    
+    const localElements = excalidrawAPI.getSceneElementsIncludingDeleted();
+    const appState = excalidrawAPI.getAppState();
+    const restoredRemoteElements = restoreElements(remoteElements, null);
+    
+    console.log(`Reconciliation: ${localElements.length} local + ${remoteElements.length} remote`);
+    
+    const reconciledElements = reconcileElements(
+      localElements,
+      restoredRemoteElements as any,
+      appState,
+    );
+    
+    console.log(`Reconciled result: ${reconciledElements.length} elements`);
+    
+    // 公式方式: reconciliation前にバージョン設定でbroadcast防止
+    const newSceneVersion = getSceneVersion(reconciledElements);
+    lastBroadcastedOrReceivedSceneVersionRef.current = newSceneVersion;
+    collaboration.setLastReceivedSceneVersion(reconciledElements);
+    
+    console.log('Set scene version to prevent re-broadcasting:', newSceneVersion);
+    
+    return reconciledElements;
+  }, [collaboration]);
+
+  // Collab コンポーネントからの同期データ受信（公式方式採用）
+  const handleCollabSceneUpdate = useCallback((data: { elements: any[]; appState: any }) => {
+    console.log('Received scene update from Collab:', data.elements.length, 'elements');
+    
+    // 公式方式: reconcile → handleRemoteSceneUpdate の順序
+    const reconciledElements = _reconcileElements(data.elements);
+    if (reconciledElements.length >= 0) { // 0でも更新する
+      handleRemoteSceneUpdate(reconciledElements);
+    }
+  }, [_reconcileElements, handleRemoteSceneUpdate]);
+
+  const handleCollabPointerUpdate = useCallback((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
+    console.log('Received pointer update from Collab:', {
+      userId: data.userId,
+      position: { x: data.x, y: data.y },
+      username: data.username,
+      selectedElementIds: data.selectedElementIds,
+      selectionCount: data.selectedElementIds?.length || 0
+    });
     setCollaboratorPointers(prev => {
       const updated = new Map(prev);
       updated.set(data.userId, data);
       return updated;
     });
-  }, []);
 
-  // フラグ: リモートアップデートからの変更かどうか
-  const isRemoteUpdateRef = useRef(false);
+    // Update Excalidraw collaborators with pointer position and username
+    if (excalidrawAPIRef.current) {
+      const collaborator = collaborators.find(c => c.id === data.userId);
+      const username = data.username || collaborator?.username || `User ${data.userId.slice(0, 6)}`;
+      const color = collaborator?.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+      
+      const collaboratorsMap = new Map();
+      collaboratorsMap.set(data.userId, {
+        username: username,
+        avatarUrl: null,
+        color: {
+          background: color,
+          stroke: color,
+        },
+        pointer: {
+          x: data.x,
+          y: data.y,
+        },
+        selectedElementIds: data.selectedElementIds || [],
+      });
 
-  // シーン変更のハンドラ
+      excalidrawAPIRef.current.updateScene({
+        appState: {
+          collaborators: collaboratorsMap,
+        },
+      });
+    }
+  }, [collaborators]);
+
+  // 公式方式: CaptureUpdateAction.NEVERにより複雑なフラグ管理は不要
+  
+  // Handle broadcasting full scene when new user joins
+  useEffect(() => {
+    const handleBroadcastFullScene = () => {
+      if (isCollaborating && collabRef.current && excalidrawAPIRef.current) {
+        const elements = excalidrawAPIRef.current.getSceneElements();
+        console.log('Broadcasting full scene to new user:', elements.length, 'elements');
+        // Force sync all elements
+        collaboration.broadcastScene(elements.map(el => ({ ...el, version: el.version || 1 })), true);
+      }
+    };
+    
+    window.addEventListener('broadcastFullScene', handleBroadcastFullScene);
+    return () => window.removeEventListener('broadcastFullScene', handleBroadcastFullScene);
+  }, [isCollaborating, collaboration]);
+
+  // 公式方式: シンプルなonChange処理
   const handleChange = useCallback(
     (elements: any, appState: any, files: any) => {
-      // リモートアップデートからの変更の場合は、ブロードキャストしない
-      if (isRemoteUpdateRef.current) {
-        console.log('Scene changed from remote update, skipping broadcast');
-        isRemoteUpdateRef.current = false;
-        return;
-      }
-      
       console.log('Scene changed:', { elements: elements.length, isCollaborating });
       
-      // Debug: Log local element dimensions before broadcasting
-      if (isCollaborating && elements.length > 0) {
-        const localElementDebug = elements.map((el: any) => ({
-          id: el.id?.substring(0, 8) + '...' || 'unknown',
-          type: el.type || 'unknown',
-          width: el.width || 0,
-          height: el.height || 0,
-          x: el.x || 0,
-          y: el.y || 0,
-          isDeleted: el.isDeleted || false
-        }));
-        console.log('Local scene changed, elements:', localElementDebug);
+      // 公式方式: シンプルなコラボレーション同期
+      if (isCollaborating && collaboration.isCollaborating) {
+        collaboration.syncElements(elements);
       }
       
       // ローカルストレージへの保存
       if (!isCollaborating) {
         saveToLocalStorage({ elements, appState, files });
       }
-      
-      // コラボレーション中はCollabコンポーネント経由でブロードキャスト
-      if (isCollaborating && collabRef.current) {
-        console.log('Broadcasting scene update via encrypted channel...');
-        collabRef.current.broadcastSceneUpdate(elements, appState);
-      }
     },
-    [isCollaborating, socket]
+    [isCollaborating, collaboration]
   );
 
   // Excalidrawコンポーネントがマウントされたとき
@@ -300,12 +311,29 @@ function App() {
     }
   }, [socket, isCollaborating, excalidrawAPIRef.current, pendingUrlJoin, currentRoomId, currentUsername]);
 
-  // ポインター更新のハンドラ
+  // ポインター更新のハンドラ (Excalidraw style)
   const handlePointerUpdate = useCallback(
-    (payload: any) => {
-      if (isCollaborating && collabRef.current && payload.pointer) {
-        console.log('Broadcasting pointer update:', payload.pointer);
-        collabRef.current.broadcastPointerUpdate(payload.pointer.x, payload.pointer.y);
+    (payload: {
+      pointer: { x: number; y: number };
+      button: 'up' | 'down';
+      pointersMap: any;
+    }) => {
+      // Excalidraw style: only broadcast if we have less than 2 pointers and are collaborating
+      if (payload.pointersMap && payload.pointersMap.size < 2 && 
+          isCollaborating && collabRef.current && payload.pointer && excalidrawAPIRef.current) {
+        
+        // Get current selection state
+        const appState = excalidrawAPIRef.current.getAppState();
+        const selectedElementIds = appState.selectedElementIds 
+          ? Object.keys(appState.selectedElementIds).filter(id => appState.selectedElementIds![id])
+          : [];
+        
+        console.log('Broadcasting pointer update with selection:', {
+          pointer: payload.pointer,
+          selectedElementIds: selectedElementIds,
+          selectionCount: selectedElementIds.length
+        });
+        collabRef.current.broadcastPointerUpdate(payload.pointer.x, payload.pointer.y, selectedElementIds);
       }
     },
     [isCollaborating]
@@ -433,6 +461,7 @@ function App() {
                     handleLeaveRoom();
                   }
                 }}
+                data-testid="live-collaboration-trigger"
               >
                 {isCollaborating && collaboratorCount > 0 && (
                   <span className="collaborator-count">

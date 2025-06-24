@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import throttle from 'lodash.throttle';
 import { useSocket } from '../../hooks/useSocket';
 import { SyncPortal } from '../../services/sync-portal';
 import { socketService } from '../../services/socket';
@@ -27,12 +28,12 @@ interface CollabProps {
   onCollaborationStateChange?: (isCollaborating: boolean, roomKey?: string, roomId?: string, username?: string) => void;
   onCollaboratorsChange?: (collaborators: RoomUser[]) => void;
   onSceneUpdate?: (data: { elements: any[]; appState: any }) => void;
-  onPointerUpdate?: (data: { userId: string; x: number; y: number }) => void;
+  onPointerUpdate?: (data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => void;
 }
 
 export interface CollabHandle {
   broadcastSceneUpdate: (elements: any[], appState: any) => Promise<void>;
-  broadcastPointerUpdate: (x: number, y: number) => Promise<void>;
+  broadcastPointerUpdate: (x: number, y: number, selectedElementIds?: readonly string[]) => Promise<void>;
   joinRoom: (data: RoomFormData) => void;
   leaveRoom: () => void;
   getState: () => CollaborationState;
@@ -68,7 +69,11 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     // Handle new-user event
     const handleNewUser = (socketId: string) => {
       console.log('New user joined:', socketId);
-      // In Excalidraw, this triggers fetching the current scene state
+      // Broadcast full scene to the new user (like Excalidraw)
+      if (state.isInRoom && roomKey) {
+        // Signal parent to broadcast full scene
+        window.dispatchEvent(new CustomEvent('broadcastFullScene'));
+      }
     };
 
     // Handle room-user-change event
@@ -177,7 +182,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
         case WS_SUBTYPES.INIT:
         case WS_SUBTYPES.UPDATE:
           // シーンデータの更新処理 - Appコンポーネントに通知
-          console.log('Received scene update:', decryptedData.payload.elements.length, 'elements');
+          console.log(`Received scene ${decryptedData.type}:`, decryptedData.payload.elements.length, 'elements');
           
           // Debug: Log received element dimensions
           const receivedElements = decryptedData.payload.elements.map((el: any) => ({
@@ -185,12 +190,43 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
             type: el.type || 'unknown', 
             dimensions: `${el.width || 0}x${el.height || 0}`,
             position: `(${el.x || 0}, ${el.y || 0})`,
-            isDeleted: el.isDeleted || false
+            isDeleted: el.isDeleted || false,
+            version: el.version || 0,
+            updated: el.updated || 'none'
           }));
-          console.log('Received elements:', receivedElements);
+          console.log('Received elements details:', receivedElements);
           
+          // Filter and validate elements before updating
+          const validElements = decryptedData.payload.elements.filter((el: any) => {
+            const isValid = el && el.id && el.type && !el.isDeleted && 
+                   typeof el.x === 'number' && typeof el.y === 'number';
+            if (!isValid && el) {
+              console.log('Filtered out invalid element:', {
+                id: el.id,
+                type: el.type,
+                isDeleted: el.isDeleted,
+                hasValidPosition: typeof el.x === 'number' && typeof el.y === 'number'
+              });
+            }
+            return isValid;
+          });
+          
+          console.log('Valid elements to update:', validElements.length, 'out of', decryptedData.payload.elements.length);
+          
+          // Enhanced element details for valid elements
+          if (validElements.length > 0) {
+            const validElementDetails = validElements.map((el: any) => ({
+              id: el.id?.substring(0, 8) + '...',
+              type: el.type,
+              version: el.version,
+              isComplete: !!(el.width && el.height)
+            }));
+            console.log('Sending valid elements to App:', validElementDetails);
+          }
+          
+          // Always call onSceneUpdate to trigger reconciliation
           onSceneUpdate?.({
-            elements: [...decryptedData.payload.elements],
+            elements: validElements,
             appState: {
               collaborators: new Map(),
               ...decryptedData.payload.appState
@@ -203,7 +239,9 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
           onPointerUpdate?.({
             userId: decryptedData.payload.socketId,
             x: decryptedData.payload.pointer.x,
-            y: decryptedData.payload.pointer.y
+            y: decryptedData.payload.pointer.y,
+            username: decryptedData.payload.username,
+            selectedElementIds: decryptedData.payload.selectedElementIds
           });
           break;
         case WS_SUBTYPES.IDLE_STATUS:
@@ -326,14 +364,21 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       type: el.type || 'unknown',
       dimensions: `${el.width || 0}x${el.height || 0}`,
       position: `(${el.x || 0}, ${el.y || 0})`,
-      isDeleted: el.isDeleted || false
+      isDeleted: el.isDeleted || false,
+      version: el.version || 0,
+      versionNonce: el.versionNonce || 0
     }));
     console.log('Broadcasting elements:', debugElements);
+
+    // Filter out invalid elements before broadcasting
+    const validElements = elements.filter(el => {
+      return el && el.id && !el.isDeleted;
+    });
 
     const data: SocketUpdateData = {
       type: WS_SUBTYPES.UPDATE,
       payload: {
-        elements,
+        elements: validElements,
         appState
       }
     };
@@ -341,8 +386,8 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     await socketService.broadcastEncryptedData(data, false, state.roomId);
   }, [state.isInRoom, state.roomId, roomKey]);
 
-  // Broadcast pointer update via volatile encrypted channel
-  const broadcastPointerUpdate = useCallback(async (x: number, y: number) => {
+  // Broadcast pointer update via volatile encrypted channel (throttled like Excalidraw)
+  const broadcastPointerUpdate = useCallback(throttle(async (x: number, y: number, selectedElementIds?: readonly string[]) => {
     if (!state.isInRoom || !roomKey || !state.roomId) return;
 
     const data: SocketUpdateData = {
@@ -351,13 +396,13 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
         socketId: socketService.socket?.id || '',
         pointer: { x, y },
         button: 'up',
-        selectedElementIds: [],
+        selectedElementIds: selectedElementIds || [],
         username: state.username || 'Anonymous'
       }
     };
 
     await socketService.broadcastEncryptedData(data, true, state.roomId);
-  }, [state.isInRoom, state.roomId, state.username, roomKey]);
+  }, 16), [state.isInRoom, state.roomId, state.username, roomKey]); // 16ms throttle like Excalidraw's CURSOR_SYNC_TIMEOUT
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
