@@ -1,14 +1,17 @@
+# Development Dockerfile for frontend with hot reload
 FROM node:18-alpine
 
 WORKDIR /app
 
-# 依存関係のインストール
-COPY package*.json ./
-RUN npm install
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# アプリケーションコードのコピー
+# Copy source code (will be overridden by volume mount)
 COPY . .
 
+# Expose port 3000 for Vite dev server
 EXPOSE 3000
 
-CMD ["npm", "run", "dev", "--", "--host"]
+# Start development server directly (no env injection needed)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -1,0 +1,113 @@
+.collab-footer-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--color-surface-low);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  height: 36px;
+  margin: 0 auto;
+  max-width: fit-content;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Integrate RoomDisplay component */
+.collab-footer-container .room-display {
+  margin: 0;
+}
+
+/* Override the original collab-toolbar styles for footer layout */
+.collab-footer-container .collab-toolbar {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Styles for status indicator in footer */
+.collab-footer-container .collab-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
+.collab-status-indicator .room-info-status {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 12px;
+}
+
+.collab-status-indicator .room-label {
+  color: var(--color-text-secondary, #666);
+  font-weight: 500;
+}
+
+.collab-status-indicator .room-id {
+  color: var(--color-text-primary, #333);
+  font-weight: 600;
+  background: var(--color-surface-high, #f0f0f0);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+}
+
+/* Adjust collaborators list for footer */
+.collab-footer-container .collaborators-list {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Styles for editable username in footer */
+.collab-footer-container .editable-username {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 4px 8px;
+}
+
+.collab-footer-container .editable-username.clickable:hover {
+  background: var(--color-surface-high, #f0f0f0);
+}
+
+.collab-footer-container .editable-username.editing {
+  background: var(--color-surface-high, #f0f0f0);
+  border: 1px solid var(--color-primary, #007bff);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .collab-footer-container {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+  
+  .collab-footer-container .collaborators-list {
+    flex-shrink: 0;
+  }
+}
+
+/* Dark theme support */
+[data-theme="dark"] .collab-footer-container {
+  background: var(--color-surface-low);
+  border-color: var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}

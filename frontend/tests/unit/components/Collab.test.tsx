@@ -91,24 +91,28 @@ describe('Collab Component', () => {
     it('should set up socket event listeners on mount', () => {
       render(<Collab />);
       
-      expect(mockSocket.on).toHaveBeenCalledWith('room-joined', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('user-joined', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('user-left', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('init-room', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('new-user', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('room-user-change', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('first-in-room', expect.any(Function));
       expect(mockSocket.on).toHaveBeenCalledWith('error', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('client-broadcast', expect.any(Function));
     });
 
-    it('should handle room joined event', () => {
+    it('should handle room user change event', () => {
       const mockCallback = vi.fn();
       render(<Collab onCollaborationStateChange={mockCallback} />);
       
-      // Get the callback function passed to socket.on for 'room-joined'
-      const roomJoinedCallback = mockSocket.on.mock.calls.find(
-        call => call[0] === 'room-joined'
+      // Get the callback function passed to socket.on for 'room-user-change'
+      const roomUserChangeCallback = mockSocket.on.mock.calls.find(
+        call => call[0] === 'room-user-change'
       )?.[1];
       
-      if (roomJoinedCallback) {
-        roomJoinedCallback({ roomId: 'test-room', users: [] });
-        expect(mockCallback).toHaveBeenCalledWith(true);
+      if (roomUserChangeCallback) {
+        // Simulate room user change with some user IDs
+        roomUserChangeCallback(['user1', 'user2']);
+        // The callback should be called when room state changes
+        expect(mockCallback).toHaveBeenCalled();
       }
     });
 
@@ -132,8 +136,13 @@ describe('Collab Component', () => {
       
       unmount();
       
-      // Verify that socket.off was called to cleanup listeners
-      expect(mockSocket.off).toHaveBeenCalled();
+      // Verify that socket.off was called to cleanup listeners for all events
+      expect(mockSocket.off).toHaveBeenCalledWith('init-room');
+      expect(mockSocket.off).toHaveBeenCalledWith('new-user');
+      expect(mockSocket.off).toHaveBeenCalledWith('room-user-change');
+      expect(mockSocket.off).toHaveBeenCalledWith('first-in-room');
+      expect(mockSocket.off).toHaveBeenCalledWith('error');
+      expect(mockSocket.off).toHaveBeenCalledWith('client-broadcast');
     });
   });
 });

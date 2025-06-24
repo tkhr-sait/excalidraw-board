@@ -112,3 +112,180 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Enhanced ShareDialog styles */
+.active-room-dialog,
+.join-room-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.room-id-display,
+.username-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.room-id,
+.username {
+  flex: 1;
+  font-family: monospace;
+  font-size: 14px;
+  color: #333;
+}
+
+.copy-button,
+.edit-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  opacity: 0.7;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.copy-button:hover,
+.edit-button:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.username-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.username-edit-form input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.username-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.username-edit-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.save-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.save-button:hover {
+  background-color: #45a049;
+}
+
+.collaborators-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.collaborator-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.collaborator-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.collaborator-name {
+  font-size: 14px;
+  color: #333;
+}
+
+.primary-button {
+  background-color: #2196f3;
+  color: white;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.primary-button:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.secondary-button {
+  background-color: #f5f5f5;
+  color: #333;
+  padding: 8px 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.danger-button {
+  background-color: #f44336;
+  color: white;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.danger-button:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,27 +1,106 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { socketService } from '../services/socket';
 import type { SocketEventName, SocketEvents } from '../types/socket';
 
 export interface UseSocketOptions {
   autoConnect?: boolean;
   url?: string;
+  fallbackUrls?: string[];
+}
+
+// Helper function to get WebSocket URL with fallback logic
+function getWebSocketUrl(customUrl?: string, _fallbackUrls?: string[]): string {
+  // First priority: Custom URL provided
+  if (customUrl) {
+    return customUrl;
+  }
+
+  // Second priority: Runtime environment variable from window.ENV
+  if (typeof window !== 'undefined' && (window as any).ENV?.VITE_WEBSOCKET_SERVER_URL) {
+    const runtimeUrl = (window as any).ENV.VITE_WEBSOCKET_SERVER_URL;
+    if (runtimeUrl) {
+      return runtimeUrl;
+    }
+  }
+
+  // Third priority: Build-time environment variable
+  const envUrl = import.meta.env.VITE_WEBSOCKET_SERVER_URL;
+  if (envUrl) {
+    return envUrl;
+  }
+
+  // Fourth priority: Auto-detect based on current location
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    const isSecure = protocol === 'https:';
+    const wsProtocol = isSecure ? 'wss:' : 'ws:';
+
+    // Try to use the same host as the frontend
+    const detectedUrl = `${wsProtocol}//${hostname}:3002`;
+
+    // Debug logging
+    const debugEnabled = (window as any).ENV?.VITE_DEBUG_WEBSOCKET === 'true' || 
+                        import.meta.env.VITE_DEBUG_WEBSOCKET === 'true';
+    if (debugEnabled) {
+      console.log('WebSocket URL auto-detection:', {
+        protocol,
+        hostname,
+        port,
+        detectedUrl,
+        runtimeEnv: (window as any).ENV,
+        buildEnv: import.meta.env.VITE_WEBSOCKET_SERVER_URL
+      });
+    }
+
+    return detectedUrl;
+  }
+
+  // Final fallback: localhost
+  return 'http://localhost:3002';
 }
 
 export function useSocket(options: UseSocketOptions = {}) {
-  const {
-    autoConnect = true,
-    url = import.meta.env.VITE_WEBSOCKET_SERVER_URL || 'http://localhost:3002',
-  } = options;
+  const { autoConnect = true, url, fallbackUrls = [] } = options;
+
+  const primaryUrl = getWebSocketUrl(url, fallbackUrls);
 
   const listenersRef = useRef<Map<string, Set<Function>>>(new Map());
+  const [isConnected, setIsConnected] = useState(socketService.isConnected());
 
   useEffect(() => {
     if (autoConnect && !socketService.isConnected()) {
-      socketService.connect(url);
+      // Try to connect with primary URL and fallback URLs
+      console.log('Attempting WebSocket connection to:', primaryUrl);
+      socketService.connect(primaryUrl, fallbackUrls);
     }
+
+    // Listen for connection state changes
+    const handleConnect = () => {
+      console.log('useSocket: Socket connected, updating state');
+      setIsConnected(true);
+      // Update global debug info when socket connects
+      if (typeof window !== 'undefined') {
+        (window as any).socketId = socketService.getSocketId();
+      }
+    };
+
+    const handleDisconnect = () => {
+      console.log('useSocket: Socket disconnected, updating state');
+      setIsConnected(false);
+      // Clear debug info when socket disconnects
+      if (typeof window !== 'undefined') {
+        (window as any).socketId = null;
+      }
+    };
+
+    socketService.on('connect' as any, handleConnect);
+    socketService.on('disconnect' as any, handleDisconnect);
 
     return () => {
       // コンポーネントがアンマウントされるときにリスナーをクリア
+      socketService.off('connect' as any, handleConnect);
+      socketService.off('disconnect' as any, handleDisconnect);
+
       listenersRef.current.forEach((callbacks, event) => {
         callbacks.forEach((callback) => {
           socketService.off(event as SocketEventName, callback as any);
@@ -29,7 +108,7 @@ export function useSocket(options: UseSocketOptions = {}) {
       });
       listenersRef.current.clear();
     };
-  }, [autoConnect, url]);
+  }, [autoConnect, primaryUrl]);
 
   const emit = useCallback(
     <K extends SocketEventName>(
@@ -42,10 +121,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   );
 
   const on = useCallback(
-    <K extends SocketEventName>(
-      event: K,
-      callback: SocketEvents[K]
-    ) => {
+    <K extends SocketEventName>(event: K, callback: SocketEvents[K]) => {
       socketService.on(event, callback);
 
       // リスナーを追跡
@@ -58,10 +134,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   );
 
   const off = useCallback(
-    <K extends SocketEventName>(
-      event: K,
-      callback?: SocketEvents[K]
-    ) => {
+    <K extends SocketEventName>(event: K, callback?: SocketEvents[K]) => {
       socketService.off(event, callback);
 
       // リスナーの追跡を削除
@@ -74,23 +147,25 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   const connect = useCallback(() => {
     if (!socketService.isConnected()) {
-      socketService.connect(url);
+      console.log('Manual WebSocket connection to:', primaryUrl);
+      socketService.connect(primaryUrl, fallbackUrls);
     }
-  }, [url]);
+  }, [primaryUrl, fallbackUrls]);
 
   const disconnect = useCallback(() => {
     socketService.disconnect();
   }, []);
 
-  const joinRoom = useCallback(
-    (roomId: string, username: string) => {
-      socketService.joinRoom(roomId, username);
-    },
-    []
-  );
+  const joinRoom = useCallback((roomId: string, username: string) => {
+    socketService.joinRoom(roomId, username);
+  }, []);
 
   const leaveRoom = useCallback((roomId: string) => {
     socketService.leaveRoom(roomId);
+  }, []);
+
+  const updateUsername = useCallback((roomId: string, username: string) => {
+    socketService.updateUsername(roomId, username);
   }, []);
 
   return {
@@ -101,6 +176,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     disconnect,
     joinRoom,
     leaveRoom,
-    isConnected: socketService.isConnected(),
+    updateUsername,
+    isConnected,
   };
 }

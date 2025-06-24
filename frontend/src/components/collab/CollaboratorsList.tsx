@@ -10,30 +10,40 @@ export function CollaboratorsList({
   collaborators, 
   currentUserId 
 }: CollaboratorsListProps) {
+  const maxVisible = 5;
+  const visibleCollaborators = collaborators.slice(0, maxVisible);
+  const hiddenCount = collaborators.length - maxVisible;
+  const allCollaboratorsText = collaborators
+    .map(c => c.username === currentUserId ? `${c.username} (You)` : c.username)
+    .join(', ');
+
   return (
     <div className="collaborators-list">
-      <h3 className="collaborators-title">
-        Collaborators ({collaborators.length})
-      </h3>
-      <ul className="collaborators-items">
-        {collaborators.map(collaborator => (
-          <li 
+      <div className="collaborators-compact">
+        {visibleCollaborators.map(collaborator => (
+          <div 
             key={collaborator.id} 
-            className="collaborator-item"
+            className="collaborator-avatar"
+            style={{ backgroundColor: collaborator.color }}
+            title={collaborator.username === currentUserId ? `${collaborator.username} (You)` : collaborator.username}
           >
-            <div 
-              className="collaborator-avatar"
-              style={{ backgroundColor: collaborator.color }}
-            >
-              {collaborator.username.charAt(0).toUpperCase()}
-            </div>
-            <span className="collaborator-name">
-              {collaborator.username}
-              {collaborator.username === currentUserId && ' (You)'}
-            </span>
-          </li>
+            {collaborator.username.charAt(0).toUpperCase()}
+          </div>
         ))}
-      </ul>
+        
+        {hiddenCount > 0 && (
+          <div 
+            className="collaborator-overflow"
+            title={`And ${hiddenCount} more: ${collaborators.slice(maxVisible).map(c => c.username).join(', ')}`}
+          >
+            +{hiddenCount}
+          </div>
+        )}
+      </div>
+      
+      <div className="collaborators-tooltip" title={`All collaborators: ${allCollaboratorsText}`}>
+        {collaborators.length} collaborator{collaborators.length !== 1 ? 's' : ''}
+      </div>
     </div>
   );
 }

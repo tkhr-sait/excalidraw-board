@@ -1,0 +1,64 @@
+.editable-username {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-text);
+  transition: background-color 0.2s ease;
+}
+
+.editable-username.clickable {
+  cursor: pointer;
+}
+
+.editable-username.clickable:hover {
+  background-color: var(--color-surface-low);
+}
+
+.username-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  color: var(--color-text-secondary);
+}
+
+.username-value {
+  color: var(--color-text);
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-icon {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 10px;
+}
+
+.editable-username.clickable:hover .edit-icon {
+  opacity: 0.7;
+}
+
+.editable-username.editing {
+  background-color: var(--color-surface-low);
+  border: 1px solid var(--color-primary);
+}
+
+.username-input {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 12px;
+  outline: none;
+  min-width: 80px;
+  max-width: 120px;
+}
+
+.username-input::placeholder {
+  color: var(--color-text-lighter);
+  font-weight: normal;
+}

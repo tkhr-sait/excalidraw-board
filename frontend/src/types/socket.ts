@@ -36,8 +36,9 @@ export const WS_SUBTYPES = {
 export const WS_EVENTS = {
   SERVER: 'server-broadcast',
   SERVER_VOLATILE: 'server-volatile-broadcast',
-  USER_FOLLOW_CHANGE: 'user-follow-change',
+  USER_FOLLOW: 'user-follow',
   USER_FOLLOW_ROOM_CHANGE: 'user-follow-room-change',
+  BROADCAST_UNFOLLOW: 'broadcast-unfollow',
 } as const;
 
 export interface SocketUpdateDataSource {
@@ -45,12 +46,14 @@ export interface SocketUpdateDataSource {
     type: typeof WS_SUBTYPES.INIT;
     payload: {
       elements: readonly any[];
+      appState?: any;
     };
   };
   UPDATE: {
     type: typeof WS_SUBTYPES.UPDATE;
     payload: {
       elements: readonly any[];
+      appState?: any;
     };
   };
   MOUSE_LOCATION: {
@@ -85,24 +88,20 @@ export type SocketUpdateData = SocketUpdateDataSource[keyof SocketUpdateDataSour
 
 export interface SocketEvents {
   // Client -> Server
-  'join-room': (data: { roomId: string; username: string }) => void;
-  'leave-room': (data: { roomId: string }) => void;
-  'scene-update': (data: SceneUpdate) => void;
-  'pointer-update': (data: { x: number; y: number }) => void;
-  'user-visibility': (data: { visible: boolean }) => void;
-  'client-broadcast': (encryptedData: ArrayBuffer, iv: Uint8Array) => void;
+  'join-room': (roomID: string) => void;
+  'server-broadcast': (roomID: string, encryptedData: ArrayBuffer, iv: Uint8Array) => void;
+  'server-volatile-broadcast': (roomID: string, encryptedData: ArrayBuffer, iv: Uint8Array) => void;
+  'user-follow': (payload: { userToFollow: { socketId: string; username: string }; action: 'FOLLOW' | 'UNFOLLOW' }) => void;
   
   // Server -> Client
-  'room-joined': (data: RoomData) => void;
-  'user-joined': (data: RoomUser) => void;
-  'user-left': (data: { userId: string }) => void;
-  'scene-data': (data: SceneUpdate) => void;
-  'collaborator-pointer': (data: { userId: string; x: number; y: number }) => void;
-  'error': (data: { message: string; code: string }) => void;
   'init-room': () => void;
   'new-user': (socketId: string) => void;
   'room-user-change': (clients: string[]) => void;
   'first-in-room': () => void;
+  'client-broadcast': (encryptedData: ArrayBuffer, iv: Uint8Array) => void;
+  'user-follow-room-change': (followedBy: string[]) => void;
+  'broadcast-unfollow': () => void;
+  'error': (data: { message: string; code: string }) => void;
 }
 
 export type SocketEventName = keyof SocketEvents;

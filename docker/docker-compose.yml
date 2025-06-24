@@ -1,41 +1,38 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # カスタムWebSocketサーバー
-  websocket-server:
-    build:
-      context: ../server
-      dockerfile: ../docker/Dockerfile.server
-    container_name: excalidraw-websocket-server
-    ports:
-      - "3002:3002"  # WebSocketサーバー
+  # excalidraw-room backend
+  backend-dev:
+    image: excalidraw/excalidraw-room:latest
+    container_name: excalidraw-room-dev
     environment:
       - NODE_ENV=development
       - PORT=3002
+    ports:
+      - "3002:3002"
     networks:
-      - excalidraw-network
+      - excalidraw-dev-network
     restart: unless-stopped
 
-  # フロントエンド開発サーバー
-  frontend:
+  # excalidraw-board frontend (development mode with hot reload)
+  frontend-dev:
     build:
       context: ../frontend
       dockerfile: ../docker/Dockerfile.frontend.dev
-    container_name: excalidraw-frontend
+    container_name: excalidraw-board-dev
+    environment:
+      - NODE_ENV=development
     ports:
       - "3000:3000"
     volumes:
       - ../frontend:/app
       - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - VITE_WEBSOCKET_SERVER_URL=http://localhost:3002
     networks:
-      - excalidraw-network
+      - excalidraw-dev-network
     depends_on:
-      - websocket-server
-    command: npm run dev -- --host
+      - backend-dev
+    restart: unless-stopped
 
 networks:
-  excalidraw-network:
+  excalidraw-dev-network:
     driver: bridge

@@ -1,6 +1,7 @@
 import throttle from 'lodash.throttle';
 import { SocketService } from './socket';
 import { EncryptionUtils } from '../utils/encryption';
+import { isSyncableElement } from '../utils/element-sync';
 import type { 
   SocketUpdateData
 } from '../types/socket';
@@ -37,7 +38,7 @@ export class SyncPortal {
         (syncAll ||
           !this.broadcastedElementVersions.has(element.id) ||
           element.version > this.broadcastedElementVersions.get(element.id)!) &&
-        this.isSyncableElement(element)
+        isSyncableElement(element as any)
       ) {
         acc.push(element);
       }
@@ -151,11 +152,6 @@ export class SyncPortal {
     );
   }, this.SYNC_FULL_SCENE_INTERVAL_MS);
 
-  // 要素がsyncableかどうかの判定
-  private isSyncableElement(element: SyncableElement): boolean {
-    // 削除されていない要素のみ同期
-    return !(element as any).isDeleted;
-  }
 
   // 暗号化されたペイロードの復号化
   async decryptPayload(

@@ -18,8 +18,15 @@ export function CollabToolbar({
   return (
     <div className="collab-toolbar">
       <div className="connection-status">
-        <div className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`} />
-        <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+        <div className={`status-indicator ${isInRoom ? 'collaborating' : isConnected ? 'connected' : 'disconnected'}`} />
+        <span className="status-text">
+          {isInRoom ? 'Collaborating' : isConnected ? 'Connected' : 'Disconnected'}
+        </span>
+        {!isConnected && (
+          <span className="status-warning" title="Connection lost. Attempting to reconnect...">
+            ⚠️
+          </span>
+        )}
       </div>
       
       {isInRoom ? (
@@ -30,6 +37,7 @@ export function CollabToolbar({
             className="leave-button"
             onClick={onLeaveRoom}
             aria-label="Leave room"
+            data-testid="collab-leave-room-button"
           >
             Leave Room
           </button>
@@ -40,6 +48,7 @@ export function CollabToolbar({
           onClick={onJoinRoom}
           aria-label="Join room"
           title={!isConnected ? "Socket disconnected - you can still open the join dialog" : "Join a collaboration room"}
+          data-testid="collab-join-room-button"
         >
           Join Room
         </button>

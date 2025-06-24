@@ -6,7 +6,8 @@ import { WS_SUBTYPES } from '../types/socket';
 export interface CollaborationAPI {
   syncPortal: SyncPortal;
   
-  // シーン同期
+  // シーン同期 - 公式と同じAPI
+  syncElements: (elements: readonly SyncableElement[]) => void;
   broadcastScene: (elements: readonly SyncableElement[], syncAll?: boolean) => void;
   broadcastSceneUpdate: (elements: readonly SyncableElement[]) => void;
   
@@ -22,6 +23,9 @@ export interface CollaborationAPI {
   // コラボレーション制御
   startCollaboration: (roomKey: string) => void;
   stopCollaboration: () => void;
+  
+  // Version tracking
+  setLastReceivedSceneVersion: (elements: SyncableElement[]) => void;
 }
 
 export function useCollaboration(): CollaborationAPI {
@@ -29,6 +33,58 @@ export function useCollaboration(): CollaborationAPI {
   const [isCollaborating, setIsCollaborating] = useState(false);
   const [roomKey, setRoomKey] = useState<string | null>(null);
   const [lastBroadcastedVersion, setLastBroadcastedVersion] = useState(-1);
+
+  // 改善されたsyncElements実装（要素数とハッシュによる変化検知）
+  const syncElements = useCallback((elements: readonly SyncableElement[]) => {
+    if (!isCollaborating) return;
+    
+    const currentVersion = Math.max(...elements.map(el => el.version || 0), 0);
+    const elementCount = elements.length;
+    
+    // 要素のハッシュを生成（IDと更新時刻ベース）
+    const elementsHash = elements.map(el => `${el.id}:${el.updated || el.version}`).sort().join('|');
+    const lastHash = (syncPortal as any).lastElementsHash;
+    
+    // バージョンチェック：新しい要素のみブロードキャスト
+    // 初回、バージョン変更、要素数変化、要素内容変化のいずれかで送信
+    const shouldBroadcast = lastBroadcastedVersion === -1 || 
+                           currentVersion > lastBroadcastedVersion ||
+                           elementCount !== (syncPortal as any).lastElementCount ||
+                           elementsHash !== lastHash;
+    
+    if (shouldBroadcast) {
+      const reason = lastBroadcastedVersion === -1 ? 'initial' : 
+                    currentVersion > lastBroadcastedVersion ? 'version_change' : 
+                    elementCount !== (syncPortal as any).lastElementCount ? 'element_count_change' : 'content_change';
+      
+      console.log('Broadcasting elements via syncElements:', {
+        elementCount: elements.length,
+        currentVersion,
+        lastBroadcastedVersion,
+        forceInitial: lastBroadcastedVersion === -1,
+        reason,
+        elementsChanged: elementsHash !== lastHash
+      });
+      
+      // 詳細な要素情報をログ出力
+      const elementDetails = elements.map(el => ({
+        id: el.id?.substring(0, 8) + '...',
+        type: el.type,
+        version: el.version,
+        updated: el.updated
+      }));
+      console.log('Broadcasting element details:', elementDetails);
+      
+      // 初回の場合はINITとして送信、それ以外はUPDATE
+      const messageType = lastBroadcastedVersion === -1 ? WS_SUBTYPES.INIT : WS_SUBTYPES.UPDATE;
+      syncPortal.broadcastScene(messageType, elements, lastBroadcastedVersion === -1);
+      setLastBroadcastedVersion(currentVersion);
+      
+      // 要素数とハッシュを記録
+      (syncPortal as any).lastElementCount = elementCount;
+      (syncPortal as any).lastElementsHash = elementsHash;
+    }
+  }, [syncPortal, isCollaborating, lastBroadcastedVersion]);
 
   // シーン全体のブロードキャスト
   const broadcastScene = useCallback((
@@ -43,7 +99,7 @@ export function useCollaboration(): CollaborationAPI {
       syncAll
     );
     
-    const currentVersion = Math.max(...elements.map(el => el.version));
+    const currentVersion = Math.max(...elements.map(el => el.version || 0), 0);
     setLastBroadcastedVersion(Math.max(lastBroadcastedVersion, currentVersion));
   }, [syncPortal, isCollaborating, lastBroadcastedVersion]);
 
@@ -63,18 +119,21 @@ export function useCollaboration(): CollaborationAPI {
     }
   }, [syncPortal, isCollaborating, lastBroadcastedVersion]);
 
-  // マウス位置のブロードキャスト
+  // マウス位置のブロードキャスト (Excalidraw style throttled)
   const broadcastMouseLocation = useCallback((
     pointer: { x: number; y: number }, 
-    button: 'up' | 'down' = 'up'
+    button: 'up' | 'down' = 'up',
+    username?: string,
+    selectedElementIds?: readonly string[]
   ) => {
     if (!isCollaborating) return;
     
+    // Throttle mouse location broadcasts to reduce network overhead
     syncPortal.broadcastMouseLocation({
       pointer,
       button,
-      selectedElementIds: [], // TODO: 選択中の要素IDを渡す
-      username: '', // TODO: ユーザー名を渡す
+      selectedElementIds: selectedElementIds || [],
+      username: username || 'Anonymous',
     });
   }, [syncPortal, isCollaborating]);
 
@@ -114,8 +173,18 @@ export function useCollaboration(): CollaborationAPI {
     setLastBroadcastedVersion(-1);
   }, []);
 
+  // Track last received scene version
+  const [, setLastReceivedSceneVersion] = useState(-1);
+
+  // Track last received scene version
+  const updateLastReceivedSceneVersion = useCallback((elements: SyncableElement[]) => {
+    const maxVersion = Math.max(...elements.map(el => el.version || 0), 0);
+    setLastReceivedSceneVersion(maxVersion);
+  }, []);
+
   return {
     syncPortal,
+    syncElements,
     broadcastScene,
     broadcastSceneUpdate,
     broadcastMouseLocation,
@@ -125,5 +194,6 @@ export function useCollaboration(): CollaborationAPI {
     lastBroadcastedVersion,
     startCollaboration,
     stopCollaboration,
+    setLastReceivedSceneVersion: updateLastReceivedSceneVersion,
   };
 }
