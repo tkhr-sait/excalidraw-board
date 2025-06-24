@@ -69,6 +69,10 @@ export class SocketService {
     return this.socket?.connected ?? false;
   }
 
+  getSocketId(): string | null {
+    return this.socket?.id ?? null;
+  }
+
   joinRoom(roomId: string, username: string): void {
     if (!this.socket) {
       throw new Error('Socket not connected');

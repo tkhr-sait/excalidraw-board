@@ -78,11 +78,19 @@ export function useSocket(options: UseSocketOptions = {}) {
     const handleConnect = () => {
       console.log('useSocket: Socket connected, updating state');
       setIsConnected(true);
+      // Update global debug info when socket connects
+      if (typeof window !== 'undefined') {
+        (window as any).socketId = socketService.getSocketId();
+      }
     };
 
     const handleDisconnect = () => {
       console.log('useSocket: Socket disconnected, updating state');
       setIsConnected(false);
+      // Clear debug info when socket disconnects
+      if (typeof window !== 'undefined') {
+        (window as any).socketId = null;
+      }
     };
 
     socketService.on('connect' as any, handleConnect);

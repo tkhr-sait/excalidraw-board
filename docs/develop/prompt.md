@@ -276,6 +276,7 @@ docker/docker-compose.yml で起動した場合、Roomにjoinできない
 ```
 
 - docker
+  - 細かい調整とゴミ掃除は人間がやった...
 
 ```
 │ > 本番環境はdocker composeで、frontend(excalidraw-board),backend(excalidraw-room),nginx(reverse-proxy/https自己署名証明書)のみの構成とする
@@ -287,4 +288,13 @@ docker/docker-compose.yml で起動した場合、Roomにjoinできない
 ```
 │ > リアルタイムコラボレーションで削除しても共有キャンバスから消えない。playwrightで動作確認とスクリーンショットを確認し、修正してくだ   │
 │   さい。@/tmp/excalidraw/excalidraw-appを参考にしてください。
+```
+
+- ユーザ削除
+  - 削除はうまくいってないけど、一覧は更新されたから一旦良しとする
+
+```
+│ > リアルタイムコラボレーションの自画面で管理されているユーザ名と、コラボレーション先で管理されているユーザ名が異なるため退出しても削   │
+│   除されない？playwrightで動作確認とスクリーンショットを確認し、修正してください。@/tmp/excalidraw/excalidraw-appを参考にしてください  │
+│   。
 ```

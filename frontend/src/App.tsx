@@ -22,6 +22,7 @@ import type { CollabHandle } from './components/collab/Collab';
 import { CollabFooter } from './components/collab/CollabFooter';
 import { CollabMobileMenu } from './components/collab/CollabMobileMenu';
 import { RoomDialog } from './components/collab/RoomDialog';
+import { ShareDialog } from './components/collab/ShareDialog';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import './App.css';
@@ -42,6 +43,7 @@ function App() {
     Map<string, CollaboratorPointer>
   >(new Map());
   const [showRoomDialog, setShowRoomDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [roomDialogError, setRoomDialogError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [pendingUrlJoin, setPendingUrlJoin] = useState<{roomId: string; username: string} | null>(null);
@@ -361,8 +363,12 @@ function App() {
       (window as any).pendingUrlJoin = pendingUrlJoin;
       (window as any).currentRoomId = currentRoomId;
       (window as any).currentUsername = currentUsername;
+      // Add collaboration state for debugging username sync issues
+      (window as any).collaborationState = collabRef.current?.getState?.();
+      // Add socket ID for debugging
+      (window as any).socketId = socket?.getSocketId?.();
     }
-  }, [socket, isCollaborating, excalidrawAPIRef.current, pendingUrlJoin, currentRoomId, currentUsername]);
+  }, [socket, isCollaborating, excalidrawAPIRef.current, pendingUrlJoin, currentRoomId, currentUsername, collabRef.current]);
 
   // ポインター更新のハンドラ (Excalidraw style)
   const handlePointerUpdate = useCallback(
@@ -432,16 +438,37 @@ function App() {
     setCollaborators(newCollaborators);
   }, []);
 
-  // ルームダイアログを開く
-  const handleOpenRoomDialog = useCallback(() => {
-    setShowRoomDialog(true);
-  }, []);
 
   // ルームダイアログを閉じる
   const handleCloseRoomDialog = useCallback(() => {
     setShowRoomDialog(false);
     setRoomDialogError(null);
     setIsConnecting(false);
+  }, []);
+
+  // ShareDialogを開く
+  const handleOpenShareDialog = useCallback(() => {
+    setShowShareDialog(true);
+    setRoomDialogError(null);
+  }, []);
+
+  // ShareDialogを閉じる
+  const handleCloseShareDialog = useCallback(() => {
+    setShowShareDialog(false);
+    setRoomDialogError(null);
+  }, []);
+
+  // ユーザー名更新のハンドラ - Fix username synchronization
+  const handleUpdateUsername = useCallback((newUsername: string) => {
+    // Update App component state first to ensure immediate UI sync
+    setCurrentUsername(newUsername);
+    
+    // Update collaboration component
+    if (collabRef.current) {
+      collabRef.current.updateUsername(newUsername);
+    }
+    
+    console.log('App: Username updated to:', newUsername);
   }, []);
 
   // ルーム参加処理
@@ -457,7 +484,9 @@ function App() {
         return;
       }
     }
+    // Close both dialogs after join attempt
     setShowRoomDialog(false);
+    setShowShareDialog(false);
     setIsConnecting(false);
   }, []);
 
@@ -466,16 +495,22 @@ function App() {
     if (collabRef.current) {
       collabRef.current.leaveRoom();
     }
+    // Close ShareDialog after leaving room
+    setShowShareDialog(false);
   }, []);
 
-  // ユーザー名変更処理
+  // ユーザー名変更処理 - Fix username synchronization
   const handleUsernameChange = useCallback((newUsername: string) => {
+    // Update App component state first to ensure immediate UI sync
     setCurrentUsername(newUsername);
     saveUsername(newUsername); // Save to localStorage
+    
+    // Update collaboration component
     if (collabRef.current) {
       collabRef.current.updateUsername(newUsername);
     }
-    console.log('Username changed to:', newUsername);
+    
+    console.log('App: Username changed to:', newUsername);
   }, []);
 
   return (
@@ -517,13 +552,7 @@ function App() {
             return (
               <LiveCollaborationTrigger
                 isCollaborating={isCollaborating}
-                onSelect={() => {
-                  if (!isCollaborating) {
-                    handleOpenRoomDialog();
-                  } else {
-                    handleLeaveRoom();
-                  }
-                }}
+                onSelect={handleOpenShareDialog}
                 data-testid="live-collaboration-trigger"
               >
                 {isCollaborating && collaboratorCount > 0 && (
@@ -580,6 +609,23 @@ function App() {
           onClose={handleCloseRoomDialog}
           initialRoomId={currentRoomId}
           initialUsername={currentUsername}
+        />
+      )}
+      
+      {/* Enhanced Share dialog */}
+      {showShareDialog && (
+        <ShareDialog
+          isOpen={showShareDialog}
+          isConnecting={isConnecting}
+          error={roomDialogError}
+          onJoin={handleJoinRoom}
+          onClose={handleCloseShareDialog}
+          onLeave={handleLeaveRoom}
+          onUpdateUsername={handleUpdateUsername}
+          isCollaborating={isCollaborating}
+          currentRoomId={currentRoomId}
+          currentUsername={currentUsername}
+          collaborators={collaborators}
         />
       )}
     </div>

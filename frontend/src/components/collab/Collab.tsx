@@ -59,6 +59,8 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
   });
   const [showRoomDialog, setShowRoomDialog] = useState(false);
   const [roomKey, setRoomKey] = useState<string | null>(null);
+  // Store collaborators by socket ID (following Excalidraw pattern)
+  const [collaboratorsMap, setCollaboratorsMap] = useState<Map<string, RoomUser>>(new Map());
 
   // Socketイベントハンドラの設定
   useEffect(() => {
@@ -78,30 +80,52 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       }
     };
 
-    // Handle room-user-change event
-    const handleRoomUserChange = (clients: string[]) => {
-      console.log('Room users changed:', clients);
-      // Update collaborators based on socket IDs
+    // Handle room-user-change event (Excalidraw style)
+    const handleRoomUserChange = (socketIds: string[]) => {
+      console.log('Room users changed:', socketIds);
+      
+      // Create new collaborators map with only active socket IDs
+      const newCollaboratorsMap = new Map<string, RoomUser>();
+      
+      socketIds.forEach(socketId => {
+        const existing = collaboratorsMap.get(socketId);
+        if (existing) {
+          // Keep existing collaborator data
+          newCollaboratorsMap.set(socketId, existing);
+        } else if (socketId === socketService.getSocketId()) {
+          // It's the current user
+          newCollaboratorsMap.set(socketId, {
+            id: socketId,
+            username: state.username || 'You',
+            color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+          });
+        } else {
+          // New user without known username yet
+          newCollaboratorsMap.set(socketId, {
+            id: socketId,
+            username: `User ${socketId.slice(0, 6)}`,
+            color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+          });
+        }
+      });
+      
+      // Update collaborators map
+      setCollaboratorsMap(newCollaboratorsMap);
+      
+      // Convert map to array for state
+      const collaboratorsArray = Array.from(newCollaboratorsMap.values());
+      
       setState(prev => ({
         ...prev,
         isInRoom: true,
         roomId: prev.roomId || 'default',
-        collaborators: clients.map(id => ({
-          id,
-          username: id === socketService.socket?.id ? (prev.username || 'You') : `User ${id.slice(0, 6)}`,
-          color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-        })),
+        collaborators: collaboratorsArray,
         isConnecting: false,
         error: null,
       }));
       
       // Notify about collaborator changes
-      const collaborators = clients.map(id => ({
-        id,
-        username: id === socketService.socket?.id ? (state.username || 'You') : `User ${id.slice(0, 6)}`,
-        color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-      }));
-      onCollaboratorsChange?.(collaborators);
+      onCollaboratorsChange?.(collaboratorsArray);
       
       // Use deterministic room key based on room ID for all users
       if (!roomKey && clients.length > 0) {
@@ -130,16 +154,22 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       const roomId = state.roomId || 'default';
       const username = state.username || 'Anonymous';
       
+      const mySocketId = socketService.socket?.id || '';
+      const myCollaborator = {
+        id: mySocketId,
+        username: username,
+        color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+      };
+      
+      // Initialize collaborators map with just the current user
+      setCollaboratorsMap(new Map([[mySocketId, myCollaborator]]));
+      
       setState(prev => ({
         ...prev,
         isInRoom: true,
         roomId: roomId,
         username: username,
-        collaborators: [{
-          id: socketService.socket?.id || '',
-          username: username,
-          color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-        }],
+        collaborators: [myCollaborator],
         isConnecting: false,
         error: null,
       }));
@@ -253,14 +283,34 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
           });
           break;
         case WS_SUBTYPES.MOUSE_LOCATION:
-          // マウス位置の更新処理
+          // マウス位置の更新処理 (Update collaborator info with username)
+          const { socketId, username, pointer, selectedElementIds } = decryptedData.payload;
           console.log('Mouse location update:', decryptedData.payload);
+          
+          // Update collaborator's username if provided
+          if (username && socketId) {
+            setCollaboratorsMap(prev => {
+              const updated = new Map(prev);
+              const existing = updated.get(socketId);
+              if (existing) {
+                updated.set(socketId, { ...existing, username });
+              } else {
+                updated.set(socketId, {
+                  id: socketId,
+                  username,
+                  color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+                });
+              }
+              return updated;
+            });
+          }
+          
           onPointerUpdate?.({
-            userId: decryptedData.payload.socketId,
-            x: decryptedData.payload.pointer.x,
-            y: decryptedData.payload.pointer.y,
-            username: decryptedData.payload.username,
-            selectedElementIds: decryptedData.payload.selectedElementIds
+            userId: socketId,
+            x: pointer.x,
+            y: pointer.y,
+            username,
+            selectedElementIds
           });
           break;
         case WS_SUBTYPES.IDLE_STATUS:
@@ -274,10 +324,28 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       }
     };
 
+    // Handle username-updated event to sync username changes between users
+    const handleUsernameUpdated = (data: { userId: string; username: string }) => {
+      console.log('Username updated by user:', data);
+      
+      // Update collaborator's username in the map
+      setCollaboratorsMap(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(data.userId);
+        if (existing) {
+          updated.set(data.userId, { ...existing, username: data.username });
+        }
+        return updated;
+      });
+      
+      // The collaborators will be synced via the useEffect that watches collaboratorsMap
+    };
+
     // イベントリスナー登録 (Excalidraw style)
     socket.on('init-room', handleInitRoom);
     socket.on('new-user', handleNewUser);
     socket.on('room-user-change', handleRoomUserChange);
+    socket.on('username-updated', handleUsernameUpdated);
     socket.on('first-in-room', handleFirstInRoom);
     socket.on('error', handleError);
     socket.on('client-broadcast', handleClientBroadcast);
@@ -287,11 +355,25 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       socket.off('init-room');
       socket.off('new-user');
       socket.off('room-user-change');
+      socket.off('username-updated');
       socket.off('first-in-room');
       socket.off('error');
       socket.off('client-broadcast');
     };
-  }, [socket, syncPortal, roomKey, onCollaborationStateChange, onCollaboratorsChange, onSceneUpdate, onPointerUpdate]);
+  }, [socket, syncPortal, roomKey, state, collaboratorsMap, onCollaborationStateChange, onCollaboratorsChange, onSceneUpdate, onPointerUpdate]);
+
+  // Sync collaborators map changes to state and notify parent
+  useEffect(() => {
+    // When collaborators map changes, update state collaborators array
+    const collaboratorsArray = Array.from(collaboratorsMap.values());
+    setState(prev => {
+      // Only update if actually changed
+      if (JSON.stringify(prev.collaborators) !== JSON.stringify(collaboratorsArray)) {
+        return { ...prev, collaborators: collaboratorsArray };
+      }
+      return prev;
+    });
+  }, [collaboratorsMap]);
 
   // コラボレーターの変更を通知
   useEffect(() => {
@@ -356,6 +438,8 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
   const handleLeaveRoom = useCallback(() => {
     if (state.roomId) {
       socket.leaveRoom(state.roomId);
+      // Clear collaborators map when leaving
+      setCollaboratorsMap(new Map());
       setState({
         isInRoom: false,
         roomId: null,
@@ -364,6 +448,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
         isConnecting: false,
         error: null,
       });
+      setRoomKey(null);
       onCollaborationStateChange?.(false);
       onCollaboratorsChange?.([]);
     }
@@ -440,24 +525,64 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     await socketService.broadcastEncryptedData(data, true, state.roomId);
   }, 16), [state.isInRoom, state.roomId, state.username, roomKey]); // 16ms throttle like Excalidraw's CURSOR_SYNC_TIMEOUT
 
-  // ユーザー名更新処理
+  // ユーザー名更新処理 - Fixed with proper socket ID handling
   const handleUpdateUsername = useCallback((newUsername: string) => {
     if (!state.isInRoom) {
       console.warn('Cannot update username: not in a room');
       return;
     }
 
+    const currentSocketId = socketService.getSocketId();
+    if (!currentSocketId) {
+      console.warn('Cannot update username: socket ID not available');
+      return;
+    }
+
+    // Update local state
     setState(prev => ({
       ...prev,
       username: newUsername,
     }));
 
+    // Update collaborators map for current user
+    setCollaboratorsMap(prev => {
+      const updated = new Map(prev);
+      const currentUserCollab = updated.get(currentSocketId);
+      
+      if (currentUserCollab) {
+        updated.set(currentSocketId, {
+          ...currentUserCollab,
+          username: newUsername,
+        });
+      }
+      
+      return updated;
+    });
+
+    // Update state collaborators array
+    setState(prev => ({
+      ...prev,
+      collaborators: prev.collaborators.map(collab => 
+        collab.id === currentSocketId 
+          ? { ...collab, username: newUsername }
+          : collab
+      )
+    }));
+
     // Update the room with new username
     if (state.roomId) {
       socket.updateUsername(state.roomId, newUsername);
-      console.log('Username updated in room:', { roomId: state.roomId, newUsername });
+      console.log('Username updated in room:', { roomId: state.roomId, newUsername, socketId: currentSocketId });
     }
-  }, [socket, state.isInRoom, state.roomId]);
+
+    // Notify parent about updated collaborators
+    const updatedCollaborators = state.collaborators.map(collab => 
+      collab.id === currentSocketId 
+        ? { ...collab, username: newUsername }
+        : collab
+    );
+    onCollaboratorsChange?.(updatedCollaborators);
+  }, [socket, state.isInRoom, state.roomId, state.collaborators, onCollaboratorsChange]);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
