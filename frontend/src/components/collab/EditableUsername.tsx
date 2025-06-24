@@ -55,7 +55,7 @@ export function EditableUsername({
   if (isEditing) {
     return (
       <div className="editable-username editing">
-        <span className="username-label">User:</span>
+        <span className="username-icon">👤</span>
         <input
           ref={inputRef}
           type="text"
@@ -77,7 +77,7 @@ export function EditableUsername({
       onClick={handleClick}
       title={onUsernameChange ? 'Click to edit your name' : undefined}
     >
-      <span className="username-label">User:</span>
+      <span className="username-icon">👤</span>
       <span className="username-value">{username}</span>
       {onUsernameChange && (
         <span className="edit-icon">✏️</span>

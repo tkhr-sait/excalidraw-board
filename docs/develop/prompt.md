@@ -298,3 +298,10 @@ docker/docker-compose.yml で起動した場合、Roomにjoinできない
 │   除されない？playwrightで動作確認とスクリーンショットを確認し、修正してください。@/tmp/excalidraw/excalidraw-appを参考にしてください  │
 │   。
 ```
+
+- フッター調整
+
+```
+│ > FooterのRoom表示を部屋アイコン＋Room名＋コピーアイコンをまとめたコンポーネントにまとめて１行表示したい
+│ > Footerのユーザ名ラベル表示をRoomと合わせて人アイコンにしたい。
+```

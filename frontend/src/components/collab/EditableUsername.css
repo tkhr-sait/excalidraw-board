@@ -17,9 +17,10 @@
   background-color: var(--color-surface-low);
 }
 
-.username-label {
-  color: var(--color-text-lighter);
-  font-weight: 500;
+.username-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  color: var(--color-text-secondary);
 }
 
 .username-value {
