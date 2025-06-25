@@ -102,6 +102,7 @@ export interface SocketEvents {
   'user-follow-room-change': (followedBy: string[]) => void;
   'broadcast-unfollow': () => void;
   'error': (data: { message: string; code: string }) => void;
+  'username-updated': (data: { socketId: string; username: string }) => void;
 }
 
 export type SocketEventName = keyof SocketEvents;

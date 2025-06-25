@@ -128,7 +128,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       onCollaboratorsChange?.(collaboratorsArray);
       
       // Use deterministic room key based on room ID for all users
-      if (!roomKey && clients.length > 0) {
+      if (!roomKey && collaboratorsArray.length > 0) {
         const currentRoomId = state.roomId || 'default';
         const currentUsername = state.username || 'Anonymous';
         
@@ -325,15 +325,15 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     };
 
     // Handle username-updated event to sync username changes between users
-    const handleUsernameUpdated = (data: { userId: string; username: string }) => {
+    const handleUsernameUpdated = (data: { socketId: string; username: string }) => {
       console.log('Username updated by user:', data);
       
       // Update collaborator's username in the map
       setCollaboratorsMap(prev => {
         const updated = new Map(prev);
-        const existing = updated.get(data.userId);
+        const existing = updated.get(data.socketId);
         if (existing) {
-          updated.set(data.userId, { ...existing, username: data.username });
+          updated.set(data.socketId, { ...existing, username: data.username });
         }
         return updated;
       });

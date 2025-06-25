@@ -168,6 +168,10 @@ export function useSocket(options: UseSocketOptions = {}) {
     socketService.updateUsername(roomId, username);
   }, []);
 
+  const getSocketId = useCallback(() => {
+    return socketService.getSocketId();
+  }, []);
+
   return {
     emit,
     on,
@@ -178,5 +182,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     leaveRoom,
     updateUsername,
     isConnected,
+    getSocketId,
   };
 }
