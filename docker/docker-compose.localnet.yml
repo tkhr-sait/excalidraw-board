@@ -16,10 +16,10 @@ services:
   frontend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.frontend.prod
+      dockerfile: docker/Dockerfile.frontend.localnet
     container_name: excalidraw-board
     environment:
-      - VITE_WEBSOCKET_SERVER_URL=wss://${SERVER_HOST:-localhost}:30443
+      - VITE_WEBSOCKET_SERVER_URL=wss://${SERVER_HOST:-localhost}:${SERVER_PORT:-30443}
       - VITE_DEBUG_WEBSOCKET=${VITE_DEBUG_WEBSOCKET:-false}
     networks:
       - excalidraw-network
@@ -34,8 +34,7 @@ services:
       dockerfile: Dockerfile.nginx
     container_name: excalidraw-nginx
     ports:
-      - "30080:80"
-      - "30443:443"
+      - "${SERVER_PORT:-30443}:443"
     environment:
       - SERVER_HOST=${SERVER_HOST:-localhost}
     networks:
@@ -44,7 +43,6 @@ services:
       - frontend
       - backend
     restart: unless-stopped
-
 
 networks:
   excalidraw-network:

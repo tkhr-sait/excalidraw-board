@@ -1,15 +1,22 @@
 # excalidraw-board
 
-claude code で作成した、セルフホスティング可能なリアルタイムコラボレーションホワイトボードアプリケーション
+- excalidraw-board は、Excalidraw ライブラリを使用したリアルタイムコラボレーション機能付きホワイトボードアプリケーションです。ローカルネットワーク内でセルフホスティング可能で、外部サービスに依存しません。
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![React](https://img.shields.io/badge/React-19.1.0-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)](https://www.typescriptlang.org/)
-[![Excalidraw](https://img.shields.io/badge/Excalidraw-0.18.0-green.svg)](https://excalidraw.com/)
+  - claude code で作ってみました。 → [📝 作成に利用したプロンプト](/docs/develop/prompt.md)
 
-## 🚀 クイックスタート
+- 注意: excalidraw の realtime-collaboration 実装に準拠しているため、内部で[webcrypt](https://github.com/w3c/webcrypto/issues/28)を利用している。  
+  これは https 環境もしくは localhost での http 環境 以外だと利用できない仕様..
+  - ローカルネットワークでの利用を前提に、自己署名証明書での compose 起動を用意してある
+
+## 動作イメージ
+
+![](/docs/images/excalidraw-board.png)
+
+## 使い方
 
 ```sh
+# 前提: docker
+
 git clone https://github.com/tkhr-sait/excalidraw-board.git
 cd excalidraw-board/docker
 
@@ -20,22 +27,18 @@ docker compose -f docker-compose.yml up
 # ローカルネットワークで起動(自己署名でhttps。ローカルでの運用のみ想定)
 cat << __EOF__ > .env
 SERVER_HOST={IPアドレス}
-VITE_WEBSOCKET_SERVER_URL=wss://{IPアドレス}:30443
+SERVER_PORT={PORT}
 __EOF__
-docker compose -f docker-compose.prod.yml up
-https://{IPアドレス}:30443
+docker compose -f docker-compose.localnet.yml up
+https://${SERVER_HOST}:${SERVER_PORT}
 ```
 
-![](/docs/images/excalidraw-board.png)
+# 以下 claude が作ったもの
 
-## 📚 開発ドキュメント
-
-- [📝 プロンプト](/docs/develop/prompt.md)
-
-- 初期開発...ほぼ書き直し
-  - [📋 開発計画](/docs/develop/plan.md)
-  - [✅ 実施タスク](/docs/develop/tasks/)
-  - [🔍 最終検証レポート](/docs/develop/FINAL_VERIFICATION_REPORT.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![React](https://img.shields.io/badge/React-19.1.0-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)](https://www.typescriptlang.org/)
+[![Excalidraw](https://img.shields.io/badge/Excalidraw-0.18.0-green.svg)](https://excalidraw.com/)
 
 ## 概要
 
@@ -196,13 +199,13 @@ excalidraw-board/
 
 ```bash
 # ログ確認
-npm run logs:prod
+npm run logs:localnet
 
 # サービス再起動
-npm run restart:prod
+npm run restart:localnet
 
 # サービス停止
-npm run stop:prod
+npm run stop:localnet
 
 ```
 

@@ -20,11 +20,9 @@
     "test:e2e:report": "playwright show-report",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "deploy:prod": "../scripts/deploy.sh",
-    "monitor:prod": "../scripts/monitor.sh",
-    "logs:prod": "docker-compose -f ../docker/docker-compose.prod.yml logs -f",
-    "stop:prod": "docker-compose -f ../docker/docker-compose.prod.yml down",
-    "restart:prod": "docker-compose -f ../docker/docker-compose.prod.yml restart"
+    "logs:localnet": "docker-compose -f ../docker/docker-compose.localnet.yml logs -f",
+    "stop:localnet": "docker-compose -f ../docker/docker-compose.localnet.yml down",
+    "restart:localnet": "docker-compose -f ../docker/docker-compose.localnet.yml restart"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.0",
