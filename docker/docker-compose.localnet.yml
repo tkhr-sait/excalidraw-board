@@ -14,9 +14,12 @@ services:
 
   # excalidraw-board frontend
   frontend:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend.localnet
+    # ローカルビルドを使用する場合は以下のコメントを解除
+    # build:
+    #   context: ..
+    #   dockerfile: docker/Dockerfile.frontend.localnet
+    # GHCRからイメージを使用（デフォルト）
+    image: ghcr.io/tkhr-sait/excalidraw-board/frontend:latest
     container_name: excalidraw-board
     environment:
       - VITE_WEBSOCKET_SERVER_URL=wss://${SERVER_HOST:-localhost}:${SERVER_PORT:-30443}
@@ -29,9 +32,12 @@ services:
 
   # nginx reverse proxy with HTTPS
   nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
+    # ローカルビルドを使用する場合は以下のコメントを解除
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.nginx
+    # GHCRからイメージを使用（デフォルト）
+    image: ghcr.io/tkhr-sait/excalidraw-board/nginx:latest
     container_name: excalidraw-nginx
     ports:
       - "${SERVER_PORT:-30443}:443"

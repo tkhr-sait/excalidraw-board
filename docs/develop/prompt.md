@@ -305,3 +305,47 @@ docker/docker-compose.yml で起動した場合、Roomにjoinできない
 │ > FooterのRoom表示を部屋アイコン＋Room名＋コピーアイコンをまとめたコンポーネントにまとめて１行表示したい
 │ > Footerのユーザ名ラベル表示をRoomと合わせて人アイコンにしたい。
 ```
+
+## ローカルホスティング＆コンテナイメージ公開
+
+### 完全ローカル hosting
+
+```
+│ > cdnなど外部リソースを利用しない
+```
+
+- チェックの結果、ローカルで保持してたので AirGap 環境でも問題なし
+
+### コンテナイメージ管理
+
+```
+│ > ghcrで @docker/docker-compose.localnet.yml で自己ビルドするdockerイメージを管理したい
+```
+
+- 結果
+
+```
+● GitHub Container Registry (GHCR)でDockerイメージを管理するための設定が完了しました。
+
+  実装内容
+
+  1. GitHub Actionsワークフロー (.github/workflows/build-and-push.yml)
+    - mainブランチへのプッシュ、PR、リリース時に自動ビルド
+    - frontend と nginx の2つのイメージをビルド
+    - マルチプラットフォーム対応 (linux/amd64, linux/arm64)
+    - ビルドキャッシュ活用で高速化
+  2. docker-compose.localnet.yml の更新
+    - デフォルトでGHCRイメージを使用
+    - ローカルビルドも切り替え可能（コメント切り替え）
+    - イメージ名: ghcr.io/tkhr-sait/excalidraw-board/frontend:latest と ghcr.io/tkhr-sait/excalidraw-board/nginx:latest
+  3. README.md に使用方法を追記
+    - GHCRからのイメージ取得方法
+    - ローカルビルドへの切り替え方法
+
+  使用方法
+
+  1. GitHubでワークフローを実行すると、自動的にイメージがGHCRにプッシュされます
+  2. ローカルで最新イメージを使用：
+  docker compose -f docker-compose.localnet.yml pull
+  docker compose -f docker-compose.localnet.yml up
+```

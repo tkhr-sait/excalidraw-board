@@ -29,8 +29,14 @@ cat << __EOF__ > .env
 SERVER_HOST={IPアドレス}
 SERVER_PORT={PORT}
 __EOF__
+# 最新のビルド済みイメージを使用できます
+docker compose -f docker-compose.localnet.yml pull
 docker compose -f docker-compose.localnet.yml up
 https://${SERVER_HOST}:${SERVER_PORT}
+
+# ローカルビルドを使用したい場合
+# docker-compose.localnet.yml内のbuildセクションのコメントを解除し、
+# imageセクションをコメントアウトしてください
 ```
 
 # 以下 claude が作ったもの
