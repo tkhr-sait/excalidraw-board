@@ -11,14 +11,12 @@ export function CollabStatusIndicator({
   isConnected,
   isInRoom,
   roomId,
-  currentUsername,
 }: CollabStatusIndicatorProps) {
   
   const generateShareUrl = () => {
-    if (!roomId || !currentUsername) return '';
+    if (!roomId) return '';
     const url = new URL(window.location.href);
     url.searchParams.set('room', roomId);
-    url.searchParams.set('username', `Guest-${Date.now()}`);
     return url.toString();
   };
 

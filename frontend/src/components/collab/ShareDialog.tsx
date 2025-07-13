@@ -80,7 +80,7 @@ export function ShareDialog({
 
   const copyRoomLink = () => {
     if (currentRoomId) {
-      const roomUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}&username=${encodeURIComponent(currentUsername || '')}`;
+      const roomUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
       navigator.clipboard.writeText(roomUrl).then(() => {
         console.log('Room link copied to clipboard');
         // Could add a toast notification here
@@ -91,7 +91,7 @@ export function ShareDialog({
   };
 
   const generateShareableLink = () => {
-    const roomUrl = `${window.location.origin}${window.location.pathname}?room=${formData.roomId}&username=${encodeURIComponent(formData.username)}`;
+    const roomUrl = `${window.location.origin}${window.location.pathname}?room=${formData.roomId}`;
     navigator.clipboard.writeText(roomUrl).then(() => {
       console.log('Shareable link copied to clipboard');
     }).catch(err => {
