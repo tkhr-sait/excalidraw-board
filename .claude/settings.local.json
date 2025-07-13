@@ -35,7 +35,8 @@
       "Bash(/workspace/scripts/final-test.sh:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__ide__getDiagnostics",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "WebFetch(domain:docs.excalidraw.com)"
     ],
     "deny": []
   }
