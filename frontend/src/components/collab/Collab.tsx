@@ -437,7 +437,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
   // ルーム退出処理
   const handleLeaveRoom = useCallback(() => {
     if (state.roomId) {
-      socket.leaveRoom(state.roomId);
+      socket.leaveRoom();
       // Clear collaborators map when leaving
       setCollaboratorsMap(new Map());
       setState({

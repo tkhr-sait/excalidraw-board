@@ -87,7 +87,7 @@ export class SocketService {
     }
   }
 
-  leaveRoom(_roomId: string): void {
+  leaveRoom(): void {
     if (!this.socket) {
       return;
     }
@@ -185,7 +185,7 @@ export class SocketService {
         transport: this.socket?.io?.engine?.transport?.name,
         fallbacksAvailable: this.fallbackUrls.length
       });
-      this.handleConnectionError(error);
+      this.handleConnectionError();
     });
 
     this.socket.on('error', (error: any) => {
@@ -198,7 +198,7 @@ export class SocketService {
     this.reconnectAttempts = 0;
   }
 
-  private handleConnectionError(_error: Error): void {
+  private handleConnectionError(): void {
     this.reconnectAttempts++;
     this.connectionRetryCount++;
     

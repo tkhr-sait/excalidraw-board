@@ -6,7 +6,6 @@ interface CollabMobileMenuProps {
   isConnected: boolean;
   isInRoom: boolean;
   roomId: string | null;
-  collaborators: any[];
   currentUserId: string;
   onUsernameChange?: (newUsername: string) => void;
 }
@@ -15,7 +14,6 @@ export function CollabMobileMenu({
   isConnected,
   isInRoom,
   roomId,
-  collaborators: _collaborators,
   currentUserId,
   onUsernameChange,
 }: CollabMobileMenuProps) {

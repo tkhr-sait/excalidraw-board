@@ -13,9 +13,6 @@ export function CollaboratorsList({
   const maxVisible = 5;
   const visibleCollaborators = collaborators.slice(0, maxVisible);
   const hiddenCount = collaborators.length - maxVisible;
-  const allCollaboratorsText = collaborators
-    .map(c => c.username === currentUserId ? `${c.username} (You)` : c.username)
-    .join(', ');
 
   return (
     <div className="collaborators-compact">
