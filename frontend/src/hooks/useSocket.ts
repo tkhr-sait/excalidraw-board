@@ -9,7 +9,7 @@ export interface UseSocketOptions {
 }
 
 // Helper function to get WebSocket URL with fallback logic
-function getWebSocketUrl(customUrl?: string, _fallbackUrls?: string[]): string {
+function getWebSocketUrl(customUrl?: string): string {
   // First priority: Custom URL provided
   if (customUrl) {
     return customUrl;
@@ -62,7 +62,7 @@ function getWebSocketUrl(customUrl?: string, _fallbackUrls?: string[]): string {
 export function useSocket(options: UseSocketOptions = {}) {
   const { autoConnect = true, url, fallbackUrls = [] } = options;
 
-  const primaryUrl = getWebSocketUrl(url, fallbackUrls);
+  const primaryUrl = getWebSocketUrl(url);
 
   const listenersRef = useRef<Map<string, Set<Function>>>(new Map());
   const [isConnected, setIsConnected] = useState(socketService.isConnected());
@@ -160,8 +160,8 @@ export function useSocket(options: UseSocketOptions = {}) {
     socketService.joinRoom(roomId, username);
   }, []);
 
-  const leaveRoom = useCallback((roomId: string) => {
-    socketService.leaveRoom(roomId);
+  const leaveRoom = useCallback(() => {
+    socketService.leaveRoom();
   }, []);
 
   const updateUsername = useCallback((roomId: string, username: string) => {

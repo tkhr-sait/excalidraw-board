@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import {
   Excalidraw,
   MainMenu,
@@ -25,6 +25,8 @@ import { RoomDialog } from './components/collab/RoomDialog';
 import { ShareDialog } from './components/collab/ShareDialog';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
+import { throttle } from './utils/throttle';
+import { CollaboratorsList } from './components/collab/CollaboratorsList';
 import './App.css';
 
 function App() {
@@ -240,7 +242,7 @@ function App() {
     }
   }, [_reconcileElements, handleRemoteSceneUpdate]);
 
-  const handleCollabPointerUpdate = useCallback((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
+  const handleCollabPointerUpdate = useCallback(throttle((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
     console.log('Received pointer update from Collab:', {
       userId: data.userId,
       position: { x: data.x, y: data.y },
@@ -256,11 +258,28 @@ function App() {
 
     // Update Excalidraw collaborators with pointer position and username
     if (excalidrawAPIRef.current) {
+      // Build complete collaborators map from all collaborators
+      const collaboratorsMap = new Map();
+      
+      // Add all current collaborators to the map
+      collaborators.forEach(collaborator => {
+        collaboratorsMap.set(collaborator.id, {
+          username: collaborator.username,
+          avatarUrl: null,
+          color: {
+            background: collaborator.color,
+            stroke: collaborator.color,
+          },
+          pointer: undefined, // Will be updated below if this is the user with pointer update
+          selectedElementIds: [],
+        });
+      });
+      
+      // Update the specific user's pointer information
       const collaborator = collaborators.find(c => c.id === data.userId);
       const username = data.username || collaborator?.username || `User ${data.userId.slice(0, 6)}`;
       const color = collaborator?.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`;
       
-      const collaboratorsMap = new Map();
       collaboratorsMap.set(data.userId, {
         username: username,
         avatarUrl: null,
@@ -275,13 +294,19 @@ function App() {
         selectedElementIds: data.selectedElementIds || [],
       });
 
+      console.log('Updating Excalidraw collaborators with pointer:', {
+        totalCollaborators: collaboratorsMap.size,
+        updatedUserId: data.userId,
+        collaboratorsIds: Array.from(collaboratorsMap.keys())
+      });
+
       excalidrawAPIRef.current.updateScene({
         appState: {
           collaborators: collaboratorsMap,
         },
       });
     }
-  }, [collaborators]);
+  }, 16), [collaborators]);
 
   // 公式方式: CaptureUpdateAction.NEVERにより複雑なフラグ管理は不要
   
@@ -436,6 +461,32 @@ function App() {
   // コラボレーター変更のハンドラ
   const handleCollaboratorsChange = useCallback((newCollaborators: RoomUser[]) => {
     setCollaborators(newCollaborators);
+    
+    // Update Excalidraw's appState.collaborators for LiveCollaborationTrigger
+    if (excalidrawAPIRef.current) {
+      const collaboratorsMap = new Map();
+      newCollaborators.forEach(collaborator => {
+        collaboratorsMap.set(collaborator.id, {
+          username: collaborator.username,
+          avatarUrl: null,
+          color: {
+            background: collaborator.color,
+            stroke: collaborator.color,
+          },
+        });
+      });
+      
+      console.log('Updating Excalidraw appState.collaborators:', {
+        collaboratorsCount: newCollaborators.length,
+        collaboratorsMap: Array.from(collaboratorsMap.entries())
+      });
+      
+      excalidrawAPIRef.current.updateScene({
+        appState: {
+          collaborators: collaboratorsMap,
+        },
+      });
+    }
   }, []);
 
 
@@ -545,24 +596,33 @@ function App() {
               toggleTheme: true,
             },
           }}
-          renderTopRightUI={() => {
-            // Count active collaborators (excluding current user)
-            const collaboratorCount = collaborators.filter(c => c.id !== currentUsername).length;
+          renderTopRightUI={useMemo(() => () => {
+            console.log('Collaborators debug (renderTopRightUI):', {
+              collaborators: collaborators.map(c => ({ id: c.id, username: c.username })),
+              currentUsername,
+              collaboratorsLength: collaborators.length,
+              isCollaborating,
+              renderTimestamp: new Date().toISOString()
+            });
             
             return (
-              <LiveCollaborationTrigger
-                isCollaborating={isCollaborating}
-                onSelect={handleOpenShareDialog}
-                data-testid="live-collaboration-trigger"
-              >
-                {isCollaborating && collaboratorCount > 0 && (
-                  <span className="collaborator-count">
-                    {collaboratorCount}
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Show collaborators list when collaborating */}
+                {isCollaborating && collaborators.length > 0 && (
+                  <CollaboratorsList
+                    collaborators={collaborators}
+                    currentUserId={currentUsername || ''}
+                  />
                 )}
-              </LiveCollaborationTrigger>
+                
+                <LiveCollaborationTrigger
+                  isCollaborating={isCollaborating}
+                  onSelect={handleOpenShareDialog}
+                  data-testid="live-collaboration-trigger"
+                />
+              </div>
             );
-          }}
+          }, [collaborators, isCollaborating, currentUsername, handleOpenShareDialog])}
         >
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
@@ -577,7 +637,6 @@ function App() {
               isConnected={socket.isConnected}
               isInRoom={isCollaborating}
               roomId={currentRoomId}
-              collaborators={collaborators}
               currentUserId={currentUsername || ''}
               onUsernameChange={handleUsernameChange}
             />
