@@ -637,7 +637,6 @@ function App() {
               isConnected={socket.isConnected}
               isInRoom={isCollaborating}
               roomId={currentRoomId}
-              collaborators={collaborators}
               currentUserId={currentUsername || ''}
               onUsernameChange={handleUsernameChange}
             />
