@@ -25,6 +25,7 @@ import { RoomDialog } from './components/collab/RoomDialog';
 import { ShareDialog } from './components/collab/ShareDialog';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
+import { throttle } from './utils/throttle';
 import './App.css';
 
 function App() {
@@ -240,7 +241,7 @@ function App() {
     }
   }, [_reconcileElements, handleRemoteSceneUpdate]);
 
-  const handleCollabPointerUpdate = useCallback((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
+  const handleCollabPointerUpdate = useCallback(throttle((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
     console.log('Received pointer update from Collab:', {
       userId: data.userId,
       position: { x: data.x, y: data.y },
@@ -281,7 +282,7 @@ function App() {
         },
       });
     }
-  }, [collaborators]);
+  }, 16), [collaborators]);
 
   // 公式方式: CaptureUpdateAction.NEVERにより複雑なフラグ管理は不要
   
