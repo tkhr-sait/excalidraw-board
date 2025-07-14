@@ -8,7 +8,6 @@ import type { CollaborationState, RoomFormData } from '../../types/collaboration
 import type { RoomUser, SocketUpdateData } from '../../types/socket';
 import { WS_SUBTYPES } from '../../types/socket';
 import { CollabToolbar } from './CollabToolbar';
-import { CollaboratorsList } from './CollaboratorsList';
 import { RoomDialog } from './RoomDialog';
 import './Collab.css';
 
@@ -604,12 +603,6 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
         onLeaveRoom={handleLeaveRoom}
       />
       
-      {state.isInRoom && (
-        <CollaboratorsList 
-          collaborators={state.collaborators}
-          currentUserId={state.username || ''}
-        />
-      )}
       
       {showRoomDialog && (
         <RoomDialog

@@ -26,7 +26,6 @@ import { ShareDialog } from './components/collab/ShareDialog';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
-import { CollaboratorsList } from './components/collab/CollaboratorsList';
 import './App.css';
 
 function App() {
@@ -606,23 +605,13 @@ function App() {
             });
             
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {/* Show collaborators list when collaborating */}
-                {isCollaborating && collaborators.length > 0 && (
-                  <CollaboratorsList
-                    collaborators={collaborators}
-                    currentUserId={currentUsername || ''}
-                  />
-                )}
-                
-                <LiveCollaborationTrigger
-                  isCollaborating={isCollaborating}
-                  onSelect={handleOpenShareDialog}
-                  data-testid="live-collaboration-trigger"
-                />
-              </div>
+              <LiveCollaborationTrigger
+                isCollaborating={isCollaborating}
+                onSelect={handleOpenShareDialog}
+                data-testid="live-collaboration-trigger"
+              />
             );
-          }, [collaborators, isCollaborating, currentUsername, handleOpenShareDialog])}
+          }, [isCollaborating, handleOpenShareDialog])}
         >
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
