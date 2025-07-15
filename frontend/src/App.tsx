@@ -16,7 +16,10 @@ import type {
 import type { RoomUser } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import { getOrCreateUsername, saveUsername } from './utils/random-names';
-import { getSceneElementsIncludingDeleted, RecentlyDeletedElementsTracker } from './utils/element-sync';
+import {
+  getSceneElementsIncludingDeleted,
+  RecentlyDeletedElementsTracker,
+} from './utils/element-sync';
 import { Collab } from './components/collab/Collab';
 import type { CollabHandle } from './components/collab/Collab';
 import { CollabFooter } from './components/collab/CollabFooter';
@@ -45,7 +48,10 @@ function App() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [roomDialogError, setRoomDialogError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [pendingUrlJoin, setPendingUrlJoin] = useState<{roomId: string; username: string} | null>(null);
+  const [pendingUrlJoin, setPendingUrlJoin] = useState<{
+    roomId: string;
+    username: string;
+  } | null>(null);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -63,19 +69,28 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const roomIdFromUrl = urlParams.get('room');
     const usernameFromUrl = urlParams.get('username');
-    
-    console.log('URL params:', { roomIdFromUrl, usernameFromUrl, search: window.location.search });
-    
+
+    console.log('URL params:', {
+      roomIdFromUrl,
+      usernameFromUrl,
+      search: window.location.search,
+    });
+
     if (roomIdFromUrl) {
       // Use saved username or generate new one if not provided
       const username = usernameFromUrl || getOrCreateUsername();
-      
-      console.log('Setting up URL join for room:', roomIdFromUrl, 'username:', username);
+
+      console.log(
+        'Setting up URL join for room:',
+        roomIdFromUrl,
+        'username:',
+        username
+      );
       // URL経由でRoom参加 - 自動的にルームに参加するためのペンディング状態を設定
       setCurrentRoomId(roomIdFromUrl);
       setCurrentUsername(username);
       setPendingUrlJoin({ roomId: roomIdFromUrl, username: username });
-      
+
       // URLパラメータをクリア（履歴汚染防止）
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
@@ -88,28 +103,30 @@ function App() {
     console.log('Pending URL join effect check:', {
       pendingUrlJoin,
       hasCollabRef: !!collabRef.current,
-      socketConnected: socket.isConnected
+      socketConnected: socket.isConnected,
     });
-    
+
     if (pendingUrlJoin && collabRef.current && socket.isConnected) {
       console.log('Auto-joining room from URL parameters:', pendingUrlJoin);
       setIsConnecting(true);
       setRoomDialogError(null);
-      
+
       // Use a timeout to ensure all components are ready
       const timeoutId = setTimeout(() => {
         try {
           if (collabRef.current) {
             collabRef.current.joinRoom({
               roomId: pendingUrlJoin.roomId,
-              username: pendingUrlJoin.username
+              username: pendingUrlJoin.username,
             });
             console.log('joinRoom called successfully for URL login');
-            
+
             // Set a timeout to check if collaboration started
             setTimeout(() => {
               if (!isCollaborating) {
-                console.warn('URL join may have failed - collaboration not started after 2 seconds');
+                console.warn(
+                  'URL join may have failed - collaboration not started after 2 seconds'
+                );
                 // Don't clear pendingUrlJoin yet, let user try manually
                 setIsConnecting(false);
                 setShowRoomDialog(true);
@@ -121,13 +138,15 @@ function App() {
           }
         } catch (error) {
           console.error('Error joining room from URL:', error);
-          setRoomDialogError(error instanceof Error ? error.message : 'Unknown error occurred');
+          setRoomDialogError(
+            error instanceof Error ? error.message : 'Unknown error occurred'
+          );
           setIsConnecting(false);
           setShowRoomDialog(true); // エラー時はダイアログを表示
           setPendingUrlJoin(null);
         }
       }, 100); // Small delay to ensure components are ready
-      
+
       return () => clearTimeout(timeoutId);
     } else if (pendingUrlJoin && !socket.isConnected) {
       console.log('Socket not connected yet, waiting for connection...');
@@ -165,18 +184,18 @@ function App() {
     console.log('Collaboration state update:', {
       isCollaborating,
       socketConnected: socket.isConnected,
-      collaborationState: collaboration.isCollaborating
+      collaborationState: collaboration.isCollaborating,
     });
   }, [isCollaborating, socket.isConnected, collaboration.isCollaborating]);
 
   // ウィンドウタイトルの更新
   useEffect(() => {
     let title = 'Excalidraw Board';
-    
+
     if (currentRoomId && currentUsername && isCollaborating) {
       title = `${title} - ${currentRoomId} - ${currentUsername}`;
     }
-    
+
     document.title = title;
   }, [currentRoomId, currentUsername, isCollaborating]);
 
@@ -186,126 +205,178 @@ function App() {
   const handleRemoteSceneUpdate = useCallback((elements: any[]) => {
     const excalidrawAPI = excalidrawAPIRef.current;
     if (excalidrawAPI) {
-      console.log('Official-style handleRemoteSceneUpdate:', elements.length, 'elements');
-      
+      console.log(
+        'Official-style handleRemoteSceneUpdate:',
+        elements.length,
+        'elements'
+      );
+
       // 公式方式: リモート更新を適用
       excalidrawAPI.updateScene({
         elements: elements as any,
       });
-      
+
       console.log('Remote scene updated');
     }
   }, []);
 
   // 公式方式: reconciliation処理
-  const _reconcileElements = useCallback((remoteElements: any[]) => {
-    const excalidrawAPI = excalidrawAPIRef.current;
-    if (!excalidrawAPI) return [];
-    
-    console.log('Official-style _reconcileElements:', remoteElements.length, 'remote elements');
-    
-    const localElements = excalidrawAPI.getSceneElements();
-    const appState = excalidrawAPI.getAppState();
-    const restoredRemoteElements = restoreElements(remoteElements, null);
-    
-    console.log(`Reconciliation: ${localElements.length} local + ${remoteElements.length} remote`);
-    
-    const reconciledElements = reconcileElements(
-      localElements as any,
-      restoredRemoteElements as any,
-      appState as any,
-    );
-    
-    console.log(`Reconciled result: ${reconciledElements.length} elements`);
-    
-    // 公式方式: reconciliation前にバージョン設定でbroadcast防止
-    const newSceneVersion = getSceneVersion(reconciledElements);
-    lastBroadcastedOrReceivedSceneVersionRef.current = newSceneVersion;
-    collaboration.setLastReceivedSceneVersion(reconciledElements);
-    
-    console.log('Set scene version to prevent re-broadcasting:', newSceneVersion);
-    
-    return reconciledElements;
-  }, [collaboration]);
+  const _reconcileElements = useCallback(
+    (remoteElements: any[]) => {
+      const excalidrawAPI = excalidrawAPIRef.current;
+      if (!excalidrawAPI) return [];
+
+      console.log(
+        'Official-style _reconcileElements:',
+        remoteElements.length,
+        'remote elements'
+      );
+
+      const localElements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const restoredRemoteElements = restoreElements(remoteElements, null);
+
+      console.log(
+        `Reconciliation: ${localElements.length} local + ${remoteElements.length} remote`
+      );
+
+      const reconciledElements = reconcileElements(
+        localElements as any,
+        restoredRemoteElements as any,
+        appState as any
+      );
+
+      console.log(`Reconciled result: ${reconciledElements.length} elements`);
+
+      // 公式方式: reconciliation前にバージョン設定でbroadcast防止
+      const newSceneVersion = getSceneVersion(reconciledElements);
+      lastBroadcastedOrReceivedSceneVersionRef.current = newSceneVersion;
+      collaboration.setLastReceivedSceneVersion(reconciledElements);
+
+      console.log(
+        'Set scene version to prevent re-broadcasting:',
+        newSceneVersion
+      );
+
+      return reconciledElements;
+    },
+    [collaboration]
+  );
 
   // Collab コンポーネントからの同期データ受信（公式方式採用）
-  const handleCollabSceneUpdate = useCallback((data: { elements: any[]; appState: any }) => {
-    console.log('Received scene update from Collab:', data.elements.length, 'elements');
-    
-    // 公式方式: reconcile → handleRemoteSceneUpdate の順序
-    const reconciledElements = _reconcileElements(data.elements);
-    if (reconciledElements.length >= 0) { // 0でも更新する
-      handleRemoteSceneUpdate(reconciledElements);
-    }
-  }, [_reconcileElements, handleRemoteSceneUpdate]);
+  const handleCollabSceneUpdate = useCallback(
+    (data: { elements: any[]; appState: any }) => {
+      console.log(
+        'Received scene update from Collab:',
+        data.elements.length,
+        'elements'
+      );
+
+      // 公式方式: reconcile → handleRemoteSceneUpdate の順序
+      const reconciledElements = _reconcileElements(data.elements);
+      if (reconciledElements.length >= 0) {
+        // 0でも更新する
+        handleRemoteSceneUpdate(reconciledElements);
+      }
+    },
+    [_reconcileElements, handleRemoteSceneUpdate]
+  );
 
   // Collab コンポーネントからのビューポート更新受信
-  const handleCollabViewportUpdate = useCallback((data: { userId: string; scrollX: number; scrollY: number; zoom: number }) => {
-    console.log('Received viewport update:', data);
-    
-    // Check if we are following this user
-    if (excalidrawAPIRef.current) {
-      const appState = excalidrawAPIRef.current.getAppState();
-      if (appState.userToFollow && appState.userToFollow.socketId === data.userId) {
-        console.log('Following user viewport update:', data);
-        
-        // Update viewport to follow the user
-        excalidrawAPIRef.current.updateScene({
-          appState: {
-            scrollX: data.scrollX,
-            scrollY: data.scrollY,
-            zoom: {
-              value: data.zoom
-            }
-          }
-        });
+  const handleCollabViewportUpdate = useCallback(
+    (data: {
+      userId: string;
+      scrollX: number;
+      scrollY: number;
+      zoom: number;
+    }) => {
+      console.log('Received viewport update:', data);
+
+      // Check if we are following this user
+      if (excalidrawAPIRef.current) {
+        const appState = excalidrawAPIRef.current.getAppState();
+        if (
+          appState.userToFollow &&
+          appState.userToFollow.socketId === data.userId
+        ) {
+          console.log('Following user viewport update:', data);
+
+          // Update viewport to follow the user
+          excalidrawAPIRef.current.updateScene({
+            appState: {
+              scrollX: data.scrollX,
+              scrollY: data.scrollY,
+              zoom: data.zoom,
+            },
+          });
+        }
       }
-    }
-  }, []);
+    },
+    []
+  );
 
-  const handleCollabPointerUpdate = useCallback(throttle((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
-    // Update Excalidraw collaborators with pointer using official API
-    if (excalidrawAPIRef.current) {
-      // Get current collaborators map from Excalidraw
-      const currentAppState = excalidrawAPIRef.current.getAppState();
-      const collaboratorsMap = new Map(currentAppState.collaborators || new Map());
-      
-      // Find collaborator info from our state
-      const collaborator = collaborators.find(c => c.id === data.userId);
-      const username = data.username || collaborator?.username || `User ${data.userId.slice(0, 6)}`;
-      const color = collaborator?.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-      
-      // Get existing collaborator to preserve any other properties
-      const existingCollaborator = collaboratorsMap.get(data.userId) || {};
-      
-      // Update collaborator with new pointer information
-      collaboratorsMap.set(data.userId, {
-        ...existingCollaborator, // Preserve existing properties
-        username: username,
-        avatarUrl: existingCollaborator.avatarUrl || null,
-        color: existingCollaborator.color || {
-          background: color,
-          stroke: color,
-        },
-        pointer: {
-          x: data.x,
-          y: data.y,
-        },
-        selectedElementIds: data.selectedElementIds || [],
-        socketId: existingCollaborator.socketId || data.userId, // Preserve or set socketId
-      });
+  const handleCollabPointerUpdate = useCallback(
+    throttle(
+      (data: {
+        userId: string;
+        x: number;
+        y: number;
+        username?: string;
+        selectedElementIds?: readonly string[];
+      }) => {
+        // Update Excalidraw collaborators with pointer using official API
+        if (excalidrawAPIRef.current) {
+          // Get current collaborators map from Excalidraw
+          const currentAppState = excalidrawAPIRef.current.getAppState();
+          const collaboratorsMap = new Map(
+            currentAppState.collaborators || new Map()
+          );
 
-      // Use Excalidraw's official updateScene method for collaborator pointers
-      excalidrawAPIRef.current.updateScene({
-        appState: {
-          collaborators: collaboratorsMap,
-        },
-      });
-    }
-  }, 16), [collaborators]); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
+          // Find collaborator info from our state
+          const collaborator = collaborators.find((c) => c.id === data.userId);
+          const username =
+            data.username ||
+            collaborator?.username ||
+            `User ${data.userId.slice(0, 6)}`;
+          const color =
+            collaborator?.color ||
+            `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+
+          // Get existing collaborator to preserve any other properties
+          const existingCollaborator = collaboratorsMap.get(data.userId) || {};
+
+          // Update collaborator with new pointer information
+          collaboratorsMap.set(data.userId, {
+            ...existingCollaborator, // Preserve existing properties
+            username: username,
+            avatarUrl: existingCollaborator.avatarUrl || null,
+            color: existingCollaborator.color || {
+              background: color,
+              stroke: color,
+            },
+            pointer: {
+              x: data.x,
+              y: data.y,
+            },
+            selectedElementIds: data.selectedElementIds || [],
+            socketId: existingCollaborator.socketId || data.userId, // Preserve or set socketId
+          });
+
+          // Use Excalidraw's official updateScene method for collaborator pointers
+          excalidrawAPIRef.current.updateScene({
+            appState: {
+              collaborators: collaboratorsMap,
+            },
+          });
+        }
+      },
+      16
+    ),
+    [collaborators]
+  ); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
 
   // 公式方式: リモート更新による複雑なフラグ管理は不要
-  
+
   // Handle broadcasting full scene when new user joins
   useEffect(() => {
     const handleBroadcastFullScene = () => {
@@ -315,35 +386,56 @@ function App() {
           excalidrawAPIRef.current,
           recentlyDeletedTracker.current.getRecentlyDeletedElements()
         );
-        console.log('Broadcasting full scene to new user:', elementsIncludingDeleted.length, 'elements (including recently deleted)');
+        console.log(
+          'Broadcasting full scene to new user:',
+          elementsIncludingDeleted.length,
+          'elements (including recently deleted)'
+        );
         // Force sync all elements including recently deleted ones
-        collaboration.broadcastScene(elementsIncludingDeleted.map(el => ({ 
-          ...el, 
-          version: el.version || 1 
-        })), true);
+        collaboration.broadcastScene(
+          elementsIncludingDeleted.map((el) => ({
+            ...el,
+            version: el.version || 1,
+          })),
+          true
+        );
       }
     };
-    
+
     window.addEventListener('broadcastFullScene', handleBroadcastFullScene);
-    return () => window.removeEventListener('broadcastFullScene', handleBroadcastFullScene);
+    return () =>
+      window.removeEventListener(
+        'broadcastFullScene',
+        handleBroadcastFullScene
+      );
   }, [isCollaborating, collaboration]);
 
   // 公式方式: シンプルなonChange処理
   const handleChange = useCallback(
     (elements: any, appState: any, files: any) => {
-      console.log('Scene changed:', { elements: elements.length, isCollaborating });
-      
+      console.log('Scene changed:', {
+        elements: elements.length,
+        isCollaborating,
+      });
+
       // Track element deletions for proper sync
       if (excalidrawAPIRef.current) {
-        recentlyDeletedTracker.current.trackElementDeletions(lastElementsRef.current, elements);
+        recentlyDeletedTracker.current.trackElementDeletions(
+          lastElementsRef.current,
+          elements
+        );
         lastElementsRef.current = elements;
-        
+
         // Periodic cleanup of old deleted elements
         recentlyDeletedTracker.current.cleanup();
       }
-      
+
       // 公式方式: コラボレーション同期（削除された要素も含む）
-      if (isCollaborating && collaboration.isCollaborating && excalidrawAPIRef.current) {
+      if (
+        isCollaborating &&
+        collaboration.isCollaborating &&
+        excalidrawAPIRef.current
+      ) {
         // Get elements including recently deleted ones for proper sync
         const elementsForSync = getSceneElementsIncludingDeleted(
           excalidrawAPIRef.current,
@@ -352,14 +444,16 @@ function App() {
         console.log('Syncing elements including recently deleted:', {
           totalElements: elementsForSync.length,
           currentElements: elements.length,
-          recentlyDeleted: elementsForSync.length - elements.length
+          recentlyDeleted: elementsForSync.length - elements.length,
         });
-        collaboration.syncElements(elementsForSync.map(el => ({ 
-          ...el, 
-          version: el.version || 1 
-        })));
+        collaboration.syncElements(
+          elementsForSync.map((el) => ({
+            ...el,
+            version: el.version || 1,
+          }))
+        );
       }
-      
+
       // ローカルストレージへの保存
       if (!isCollaborating) {
         saveToLocalStorage({ elements, appState, files });
@@ -372,7 +466,7 @@ function App() {
   const handleExcalidrawMount = useCallback((api: any) => {
     setExcalidrawAPI(api);
     excalidrawAPIRef.current = api;
-    
+
     // Enable pointer events for UserList to make avatars clickable
     const enableUserListPointerEvents = () => {
       const style = document.createElement('style');
@@ -409,7 +503,7 @@ function App() {
       `;
       document.head.appendChild(style);
     };
-    
+
     // Apply styles after a short delay to ensure DOM is ready
     setTimeout(enableUserListPointerEvents, 100);
   }, []);
@@ -429,15 +523,23 @@ function App() {
       // Add socket ID for debugging
       (window as any).socketId = socket?.getSocketId?.();
     }
-  }, [socket, isCollaborating, excalidrawAPIRef.current, pendingUrlJoin, currentRoomId, currentUsername, collabRef.current]);
+  }, [
+    socket,
+    isCollaborating,
+    excalidrawAPIRef.current,
+    pendingUrlJoin,
+    currentRoomId,
+    currentUsername,
+    collabRef.current,
+  ]);
 
   // スクロール変更のハンドラ - ビューポート情報を送信
   const handleScrollChange = useCallback(
     throttle((scrollX: number, scrollY: number) => {
       if (isCollaborating && collabRef.current && excalidrawAPIRef.current) {
         const appState = excalidrawAPIRef.current.getAppState();
-        const zoom = appState.zoom?.value || 1;
-        
+        const zoom = appState.zoom || 1;
+
         // Broadcast viewport update
         collabRef.current.broadcastViewportUpdate(scrollX, scrollY, zoom);
       }
@@ -453,17 +555,28 @@ function App() {
       pointersMap: any;
     }) => {
       // Excalidraw style: only broadcast if we have less than 2 pointers and are collaborating
-      if (payload.pointersMap && payload.pointersMap.size < 2 && 
-          isCollaborating && collabRef.current && payload.pointer && excalidrawAPIRef.current) {
-        
+      if (
+        payload.pointersMap &&
+        payload.pointersMap.size < 2 &&
+        isCollaborating &&
+        collabRef.current &&
+        payload.pointer &&
+        excalidrawAPIRef.current
+      ) {
         // Get current selection state
         const appState = excalidrawAPIRef.current.getAppState();
-        const selectedElementIds = appState.selectedElementIds 
-          ? Object.keys(appState.selectedElementIds).filter(id => appState.selectedElementIds![id])
+        const selectedElementIds = appState.selectedElementIds
+          ? Object.keys(appState.selectedElementIds).filter(
+              (id) => appState.selectedElementIds![id]
+            )
           : [];
-        
+
         // Throttled broadcast to prevent excessive network traffic
-        collabRef.current.broadcastPointerUpdate(payload.pointer.x, payload.pointer.y, selectedElementIds);
+        collabRef.current.broadcastPointerUpdate(
+          payload.pointer.x,
+          payload.pointer.y,
+          selectedElementIds
+        );
       }
     },
     [isCollaborating]
@@ -471,16 +584,21 @@ function App() {
 
   // コラボレーション状態変更のハンドラ
   const handleCollaborationStateChange = useCallback(
-    (collaborating: boolean, roomKey?: string, roomId?: string, username?: string) => {
+    (
+      collaborating: boolean,
+      roomKey?: string,
+      roomId?: string,
+      username?: string
+    ) => {
       console.log('handleCollaborationStateChange called with:', {
         collaborating,
         roomKey: roomKey ? 'exists' : 'none',
         roomId,
-        username
+        username,
       });
-      
+
       setIsCollaborating(collaborating);
-      
+
       if (collaborating && roomKey) {
         // Start collaboration with the room key
         collaboration.startCollaboration(roomKey);
@@ -504,49 +622,53 @@ function App() {
   );
 
   // コラボレーター変更のハンドラ - Excalidraw本体機能を使用
-  const handleCollaboratorsChange = useCallback((newCollaborators: RoomUser[]) => {
-    setCollaborators(newCollaborators);
-    
-    // Update Excalidraw's appState.collaborators using official API
-    if (excalidrawAPIRef.current) {
-      const collaboratorsMap = new Map();
-      newCollaborators.forEach(collaborator => {
-        collaboratorsMap.set(collaborator.id, {
-          username: collaborator.username,
-          avatarUrl: null,
-          color: {
-            background: collaborator.color,
-            stroke: collaborator.color,
-          },
-          pointer: undefined, // Will be updated by pointer events
-          selectedElementIds: [], // Will be updated by pointer events
-          socketId: collaborator.id, // Add socketId for follow functionality
-        });
-      });
-      
-      console.log('Updating Excalidraw collaborators using official API:', {
-        collaboratorsCount: newCollaborators.length,
-        collaboratorsMap: Array.from(collaboratorsMap.entries())
-      });
-      
-      // Use Excalidraw's official updateScene method for collaborators
-      excalidrawAPIRef.current.updateScene({
-        appState: {
-          collaborators: collaboratorsMap,
-        },
-      });
-      
-      // Reapply pointer events styles when collaborators change
-      setTimeout(() => {
-        const userListElements = document.querySelectorAll('.UserList, .UserList__wrapper, .UserList__collaborator');
-        userListElements.forEach(el => {
-          (el as HTMLElement).style.pointerEvents = 'auto';
-          (el as HTMLElement).style.cursor = 'pointer';
-        });
-      }, 200);
-    }
-  }, []);
+  const handleCollaboratorsChange = useCallback(
+    (newCollaborators: RoomUser[]) => {
+      setCollaborators(newCollaborators);
 
+      // Update Excalidraw's appState.collaborators using official API
+      if (excalidrawAPIRef.current) {
+        const collaboratorsMap = new Map();
+        newCollaborators.forEach((collaborator) => {
+          collaboratorsMap.set(collaborator.id, {
+            username: collaborator.username,
+            avatarUrl: null,
+            color: {
+              background: collaborator.color,
+              stroke: collaborator.color,
+            },
+            pointer: undefined, // Will be updated by pointer events
+            selectedElementIds: [], // Will be updated by pointer events
+            socketId: collaborator.id, // Add socketId for follow functionality
+          });
+        });
+
+        console.log('Updating Excalidraw collaborators using official API:', {
+          collaboratorsCount: newCollaborators.length,
+          collaboratorsMap: Array.from(collaboratorsMap.entries()),
+        });
+
+        // Use Excalidraw's official updateScene method for collaborators
+        excalidrawAPIRef.current.updateScene({
+          appState: {
+            collaborators: collaboratorsMap,
+          },
+        });
+
+        // Reapply pointer events styles when collaborators change
+        setTimeout(() => {
+          const userListElements = document.querySelectorAll(
+            '.UserList, .UserList__wrapper, .UserList__collaborator'
+          );
+          userListElements.forEach((el) => {
+            (el as HTMLElement).style.pointerEvents = 'auto';
+            (el as HTMLElement).style.cursor = 'pointer';
+          });
+        }, 200);
+      }
+    },
+    []
+  );
 
   // ルームダイアログを閉じる
   const handleCloseRoomDialog = useCallback(() => {
@@ -571,33 +693,38 @@ function App() {
   const handleUpdateUsername = useCallback((newUsername: string) => {
     // Update App component state first to ensure immediate UI sync
     setCurrentUsername(newUsername);
-    
+
     // Update collaboration component
     if (collabRef.current) {
       collabRef.current.updateUsername(newUsername);
     }
-    
+
     console.log('App: Username updated to:', newUsername);
   }, []);
 
   // ルーム参加処理
-  const handleJoinRoom = useCallback((data: { roomId: string; username: string }) => {
-    if (collabRef.current) {
-      setIsConnecting(true);
-      setRoomDialogError(null);
-      try {
-        collabRef.current.joinRoom(data);
-      } catch (error) {
-        setRoomDialogError(error instanceof Error ? error.message : 'Unknown error occurred');
-        setIsConnecting(false);
-        return;
+  const handleJoinRoom = useCallback(
+    (data: { roomId: string; username: string }) => {
+      if (collabRef.current) {
+        setIsConnecting(true);
+        setRoomDialogError(null);
+        try {
+          collabRef.current.joinRoom(data);
+        } catch (error) {
+          setRoomDialogError(
+            error instanceof Error ? error.message : 'Unknown error occurred'
+          );
+          setIsConnecting(false);
+          return;
+        }
       }
-    }
-    // Close both dialogs after join attempt
-    setShowRoomDialog(false);
-    setShowShareDialog(false);
-    setIsConnecting(false);
-  }, []);
+      // Close both dialogs after join attempt
+      setShowRoomDialog(false);
+      setShowShareDialog(false);
+      setIsConnecting(false);
+    },
+    []
+  );
 
   // ルーム退出処理
   const handleLeaveRoom = useCallback(() => {
@@ -613,12 +740,12 @@ function App() {
     // Update App component state first to ensure immediate UI sync
     setCurrentUsername(newUsername);
     saveUsername(newUsername); // Save to localStorage
-    
+
     // Update collaboration component
     if (collabRef.current) {
       collabRef.current.updateUsername(newUsername);
     }
-    
+
     console.log('App: Username changed to:', newUsername);
   }, []);
 
@@ -635,7 +762,7 @@ function App() {
           onViewportUpdate={handleCollabViewportUpdate}
         />
       </div>
-      
+
       <div className="excalidraw-wrapper" data-testid="excalidraw-canvas">
         <Excalidraw
           initialData={initialData as any}
@@ -656,23 +783,29 @@ function App() {
               toggleTheme: true,
             },
           }}
-          renderTopRightUI={useMemo(() => () => {
-            console.log('Collaborators debug (renderTopRightUI):', {
-              collaborators: collaborators.map(c => ({ id: c.id, username: c.username })),
-              currentUsername,
-              collaboratorsLength: collaborators.length,
-              isCollaborating,
-              renderTimestamp: new Date().toISOString()
-            });
-            
-            return (
-              <LiveCollaborationTrigger
-                isCollaborating={isCollaborating}
-                onSelect={handleOpenShareDialog}
-                data-testid="live-collaboration-trigger"
-              />
-            );
-          }, [isCollaborating, handleOpenShareDialog])}
+          renderTopRightUI={useMemo(
+            () => () => {
+              console.log('Collaborators debug (renderTopRightUI):', {
+                collaborators: collaborators.map((c) => ({
+                  id: c.id,
+                  username: c.username,
+                })),
+                currentUsername,
+                collaboratorsLength: collaborators.length,
+                isCollaborating,
+                renderTimestamp: new Date().toISOString(),
+              });
+
+              return (
+                <LiveCollaborationTrigger
+                  isCollaborating={isCollaborating}
+                  onSelect={handleOpenShareDialog}
+                  data-testid="live-collaboration-trigger"
+                />
+              );
+            },
+            [isCollaborating, handleOpenShareDialog]
+          )}
         >
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
@@ -681,7 +814,7 @@ function App() {
             <MainMenu.Separator />
             <MainMenu.DefaultItems.ToggleTheme />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
-            
+
             {/* Mobile collaboration menu - only rendered on mobile devices */}
             <CollabMobileMenu
               isConnected={socket.isConnected}
@@ -696,7 +829,7 @@ function App() {
             <WelcomeScreen.Hints.ToolbarHint />
             <WelcomeScreen.Hints.HelpHint />
           </WelcomeScreen>
-          
+
           {/* Desktop collaboration footer - only show when sharing */}
           {isCollaborating && (
             <CollabFooter
@@ -707,7 +840,7 @@ function App() {
           )}
         </Excalidraw>
       </div>
-      
+
       {/* Room dialog */}
       {showRoomDialog && (
         <RoomDialog
@@ -720,7 +853,7 @@ function App() {
           initialUsername={currentUsername}
         />
       )}
-      
+
       {/* Enhanced Share dialog */}
       {showShareDialog && (
         <ShareDialog

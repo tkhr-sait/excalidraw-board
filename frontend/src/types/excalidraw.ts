@@ -64,9 +64,7 @@ export interface AppState {
   gridSize?: number | null;
   scrollX?: number;
   scrollY?: number;
-  zoom?: {
-    value: number;
-  };
+  zoom?: number;
   openMenu?: string | null;
   lastPointerDownWith?: string;
   selectedElementIds?: { [id: string]: boolean };
@@ -98,7 +96,7 @@ export interface ExcalidrawImperativeAPI {
     clear: () => void;
   };
   scrollToContent: (
-    target?: readonly ExcalidrawElement[] | "selection",
+    target?: readonly ExcalidrawElement[] | 'selection',
     opts?: {
       fitToContent?: boolean;
       animate?: boolean;
@@ -109,7 +107,6 @@ export interface ExcalidrawImperativeAPI {
   // Check if getSceneElementsIncludingDeleted exists
   getSceneElementsIncludingDeleted?: () => readonly ExcalidrawElement[];
 }
-
 
 export interface SceneData {
   elements: readonly ExcalidrawElement[];
