@@ -29,23 +29,27 @@ interface CollabProps {
   onCollaboratorsChange?: (collaborators: RoomUser[]) => void;
   onSceneUpdate?: (data: { elements: any[]; appState: any }) => void;
   onPointerUpdate?: (data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => void;
+  onViewportUpdate?: (data: { userId: string; scrollX: number; scrollY: number; zoom: number }) => void;
 }
 
 export interface CollabHandle {
   broadcastSceneUpdate: (elements: any[], appState: any) => Promise<void>;
   broadcastPointerUpdate: (x: number, y: number, selectedElementIds?: readonly string[]) => Promise<void>;
+  broadcastViewportUpdate: (scrollX: number, scrollY: number, zoom: number) => Promise<void>;
   joinRoom: (data: RoomFormData) => void;
   leaveRoom: () => void;
   updateUsername: (newUsername: string) => void;
   getState: () => CollaborationState;
 }
 
-export const Collab = forwardRef<CollabHandle, CollabProps>(({ 
-  onCollaborationStateChange,
-  onCollaboratorsChange,
-  onSceneUpdate,
-  onPointerUpdate
-}, ref) => {
+export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
+  const { 
+    onCollaborationStateChange,
+    onCollaboratorsChange,
+    onSceneUpdate,
+    onPointerUpdate,
+    onViewportUpdate
+  } = props;
   const socket = useSocket();
   const [syncPortal] = useState(() => new SyncPortal(socketService));
   const [state, setState] = useState<CollaborationState>({
@@ -282,6 +286,15 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
         case WS_SUBTYPES.USER_VISIBLE_SCENE_BOUNDS:
           // 可視範囲の更新処理
           console.log('Visible scene bounds update:', decryptedData.payload);
+          const { socketId: viewportUserId, sceneBounds } = decryptedData.payload;
+          
+          // Pass viewport information to parent for follow mode sync
+          onViewportUpdate?.({
+            userId: viewportUserId,
+            scrollX: sceneBounds.x,
+            scrollY: sceneBounds.y,
+            zoom: sceneBounds.zoom || 1
+          });
           break;
       }
     };
@@ -299,6 +312,26 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       }));
     };
 
+    // Handle user-follow event
+    const handleUserFollow = (payload: { userToFollow: { socketId: string; username: string }; action: 'FOLLOW' | 'UNFOLLOW' }) => {
+      console.log('User follow event received:', payload);
+      // This is handled by Excalidraw's built-in follow functionality
+      // We just need to ensure the socket event is properly forwarded
+    };
+
+    // Handle user-follow-room-change event (who is following you)
+    const handleUserFollowRoomChange = (followedBy: string[]) => {
+      console.log('User follow room change:', followedBy);
+      // Update local state about who is following you
+      // This can be used to show indicators in the UI
+    };
+
+    // Handle broadcast-unfollow event
+    const handleBroadcastUnfollow = () => {
+      console.log('Broadcast unfollow received');
+      // Clear any follow state when someone unfollows
+    };
+
     // イベントリスナー登録 (Excalidraw style)
     socket.on('init-room', handleInitRoom);
     socket.on('new-user', handleNewUser);
@@ -307,6 +340,9 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     socket.on('first-in-room', handleFirstInRoom);
     socket.on('error', handleError);
     socket.on('client-broadcast', handleClientBroadcast);
+    socket.on('user-follow', handleUserFollow);
+    socket.on('user-follow-room-change', handleUserFollowRoomChange);
+    socket.on('broadcast-unfollow', handleBroadcastUnfollow);
 
     // クリーンアップ
     return () => {
@@ -317,8 +353,11 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
       socket.off('first-in-room');
       socket.off('error');
       socket.off('client-broadcast');
+      socket.off('user-follow');
+      socket.off('user-follow-room-change');
+      socket.off('broadcast-unfollow');
     };
-  }, [socket, syncPortal, roomKey, state, onCollaborationStateChange, onCollaboratorsChange, onSceneUpdate, onPointerUpdate]);
+  }, [socket, syncPortal, roomKey, state, onCollaborationStateChange, onCollaboratorsChange, onSceneUpdate, onPointerUpdate, onViewportUpdate]);
 
   // Collaborators are now managed directly in state without separate map
 
@@ -470,6 +509,28 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
     await socketService.broadcastEncryptedData(data, true, state.roomId);
   }, 16), [state.isInRoom, state.roomId, state.username, roomKey]); // 16ms throttle like Excalidraw's CURSOR_SYNC_TIMEOUT
 
+  // Broadcast viewport update for follow mode
+  const broadcastViewportUpdate = useCallback(throttle(async (scrollX: number, scrollY: number, zoom: number) => {
+    if (!state.isInRoom || !roomKey || !state.roomId) return;
+
+    const data: SocketUpdateData = {
+      type: WS_SUBTYPES.USER_VISIBLE_SCENE_BOUNDS,
+      payload: {
+        socketId: socketService.socket?.id || '',
+        username: state.username || 'Anonymous',
+        sceneBounds: {
+          x: scrollX,
+          y: scrollY,
+          width: 0, // Not needed for follow mode
+          height: 0, // Not needed for follow mode
+          zoom
+        }
+      }
+    };
+
+    await socketService.broadcastEncryptedData(data, true, state.roomId);
+  }, 100), [state.isInRoom, state.roomId, state.username, roomKey]); // 100ms throttle for viewport updates
+
   // ユーザー名更新処理 - Fixed with proper socket ID handling
   const handleUpdateUsername = useCallback((newUsername: string) => {
     if (!state.isInRoom) {
@@ -516,11 +577,12 @@ export const Collab = forwardRef<CollabHandle, CollabProps>(({
   useImperativeHandle(ref, () => ({
     broadcastSceneUpdate,
     broadcastPointerUpdate,
+    broadcastViewportUpdate,
     joinRoom: handleJoinRoom,
     leaveRoom: handleLeaveRoom,
     updateUsername: handleUpdateUsername,
     getState: () => state
-  }), [broadcastSceneUpdate, broadcastPointerUpdate, handleJoinRoom, handleLeaveRoom, handleUpdateUsername, state]);
+  }), [broadcastSceneUpdate, broadcastPointerUpdate, broadcastViewportUpdate, handleJoinRoom, handleLeaveRoom, handleUpdateUsername, state]);
 
   return (
     <div className="collab-container">

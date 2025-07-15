@@ -27,6 +27,7 @@ import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
 import './App.css';
+import './styles/excalidraw-overrides.css';
 
 function App() {
   const socket = useSocket();
@@ -192,7 +193,7 @@ function App() {
         elements: elements as any,
       });
       
-      console.log('Remote scene updated with CaptureUpdateAction.NEVER');
+      console.log('Remote scene updated');
     }
   }, []);
 
@@ -238,6 +239,30 @@ function App() {
     }
   }, [_reconcileElements, handleRemoteSceneUpdate]);
 
+  // Collab コンポーネントからのビューポート更新受信
+  const handleCollabViewportUpdate = useCallback((data: { userId: string; scrollX: number; scrollY: number; zoom: number }) => {
+    console.log('Received viewport update:', data);
+    
+    // Check if we are following this user
+    if (excalidrawAPIRef.current) {
+      const appState = excalidrawAPIRef.current.getAppState();
+      if (appState.userToFollow && appState.userToFollow.socketId === data.userId) {
+        console.log('Following user viewport update:', data);
+        
+        // Update viewport to follow the user
+        excalidrawAPIRef.current.updateScene({
+          appState: {
+            scrollX: data.scrollX,
+            scrollY: data.scrollY,
+            zoom: {
+              value: data.zoom
+            }
+          }
+        });
+      }
+    }
+  }, []);
+
   const handleCollabPointerUpdate = useCallback(throttle((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
     // Update Excalidraw collaborators with pointer using official API
     if (excalidrawAPIRef.current) {
@@ -267,6 +292,7 @@ function App() {
           y: data.y,
         },
         selectedElementIds: data.selectedElementIds || [],
+        socketId: existingCollaborator.socketId || data.userId, // Preserve or set socketId
       });
 
       // Use Excalidraw's official updateScene method for collaborator pointers
@@ -278,7 +304,7 @@ function App() {
     }
   }, 16), [collaborators]); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
 
-  // 公式方式: CaptureUpdateAction.NEVERにより複雑なフラグ管理は不要
+  // 公式方式: リモート更新による複雑なフラグ管理は不要
   
   // Handle broadcasting full scene when new user joins
   useEffect(() => {
@@ -346,6 +372,46 @@ function App() {
   const handleExcalidrawMount = useCallback((api: any) => {
     setExcalidrawAPI(api);
     excalidrawAPIRef.current = api;
+    
+    // Enable pointer events for UserList to make avatars clickable
+    const enableUserListPointerEvents = () => {
+      const style = document.createElement('style');
+      style.textContent = `
+        .excalidraw .UserList,
+        .excalidraw .UserList__wrapper {
+          pointer-events: auto !important;
+        }
+        
+        .excalidraw .UserList > * {
+          pointer-events: auto !important;
+          cursor: pointer !important;
+        }
+        
+        .excalidraw .UserList__collaborator {
+          pointer-events: auto !important;
+          cursor: pointer !important;
+          transition: transform 0.2s ease;
+        }
+        
+        .excalidraw .UserList__collaborator:hover {
+          transform: scale(1.1);
+          opacity: 0.9;
+        }
+        
+        .excalidraw .UserList__collaborator--avatar-only {
+          pointer-events: auto !important;
+        }
+        
+        /* Ensure follow mode UI is above other elements */
+        .excalidraw .follow-mode {
+          z-index: 1000 !important;
+        }
+      `;
+      document.head.appendChild(style);
+    };
+    
+    // Apply styles after a short delay to ensure DOM is ready
+    setTimeout(enableUserListPointerEvents, 100);
   }, []);
 
   // デバッグ用: グローバルにsocket関数とExcalidraw APIを公開
@@ -364,6 +430,20 @@ function App() {
       (window as any).socketId = socket?.getSocketId?.();
     }
   }, [socket, isCollaborating, excalidrawAPIRef.current, pendingUrlJoin, currentRoomId, currentUsername, collabRef.current]);
+
+  // スクロール変更のハンドラ - ビューポート情報を送信
+  const handleScrollChange = useCallback(
+    throttle((scrollX: number, scrollY: number) => {
+      if (isCollaborating && collabRef.current && excalidrawAPIRef.current) {
+        const appState = excalidrawAPIRef.current.getAppState();
+        const zoom = appState.zoom?.value || 1;
+        
+        // Broadcast viewport update
+        collabRef.current.broadcastViewportUpdate(scrollX, scrollY, zoom);
+      }
+    }, 100), // 100ms throttle
+    [isCollaborating]
+  );
 
   // ポインター更新のハンドラ (Excalidraw style)
   const handlePointerUpdate = useCallback(
@@ -440,6 +520,7 @@ function App() {
           },
           pointer: undefined, // Will be updated by pointer events
           selectedElementIds: [], // Will be updated by pointer events
+          socketId: collaborator.id, // Add socketId for follow functionality
         });
       });
       
@@ -454,6 +535,15 @@ function App() {
           collaborators: collaboratorsMap,
         },
       });
+      
+      // Reapply pointer events styles when collaborators change
+      setTimeout(() => {
+        const userListElements = document.querySelectorAll('.UserList, .UserList__wrapper, .UserList__collaborator');
+        userListElements.forEach(el => {
+          (el as HTMLElement).style.pointerEvents = 'auto';
+          (el as HTMLElement).style.cursor = 'pointer';
+        });
+      }, 200);
     }
   }, []);
 
@@ -542,6 +632,7 @@ function App() {
           onCollaboratorsChange={handleCollaboratorsChange}
           onSceneUpdate={handleCollabSceneUpdate}
           onPointerUpdate={handleCollabPointerUpdate}
+          onViewportUpdate={handleCollabViewportUpdate}
         />
       </div>
       
@@ -551,6 +642,7 @@ function App() {
           onChange={handleChange}
           excalidrawAPI={handleExcalidrawMount}
           onPointerUpdate={handlePointerUpdate}
+          onScrollChange={handleScrollChange}
           langCode="ja"
           theme="light"
           name="Excalidraw Board"
