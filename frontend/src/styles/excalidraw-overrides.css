@@ -1,0 +1,34 @@
+/* Excalidraw overrides for follow mode functionality */
+
+/* Enable pointer events for UserList to allow clicking on avatars */
+.excalidraw .UserList {
+  --ui-pointerEvents: auto !important;
+}
+
+.excalidraw .UserList > * {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Ensure UserList is above canvas */
+.excalidraw .UserList__wrapper {
+  z-index: 10 !important;
+  pointer-events: auto !important;
+}
+
+/* Make avatar clickable */
+.excalidraw .UserList__collaborator {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.excalidraw .UserList__collaborator:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
+  transition: all 0.2s ease;
+}
+
+/* Ensure follow mode UI is visible */
+.excalidraw .follow-mode {
+  z-index: 100 !important;
+}

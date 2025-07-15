@@ -164,6 +164,7 @@ export function ShareDialog({
               <div className="info-group">
                 <label>Collaborators ({collaborators.length})</label>
                 <div className="collaborators-list">
+                  {/* Collaborators are now managed by Excalidraw's official API */}
                   {collaborators.map(collaborator => (
                     <div key={collaborator.id} className="collaborator-item">
                       <div 

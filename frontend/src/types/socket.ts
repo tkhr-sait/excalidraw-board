@@ -79,7 +79,7 @@ export interface SocketUpdateDataSource {
     payload: {
       socketId: string;
       username: string;
-      sceneBounds: { x: number; y: number; width: number; height: number };
+      sceneBounds: { x: number; y: number; width: number; height: number; zoom?: number };
     };
   };
 }
