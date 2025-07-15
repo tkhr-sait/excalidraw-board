@@ -99,9 +99,10 @@ describe('Collab Component', () => {
       expect(mockSocket.on).toHaveBeenCalledWith('client-broadcast', expect.any(Function));
     });
 
-    it('should handle room user change event', () => {
+    it('should handle room user change event with Excalidraw official API', () => {
       const mockCallback = vi.fn();
-      render(<Collab onCollaborationStateChange={mockCallback} />);
+      const mockCollaboratorsCallback = vi.fn();
+      render(<Collab onCollaborationStateChange={mockCallback} onCollaboratorsChange={mockCollaboratorsCallback} />);
       
       // Get the callback function passed to socket.on for 'room-user-change'
       const roomUserChangeCallback = mockSocket.on.mock.calls.find(
@@ -113,6 +114,13 @@ describe('Collab Component', () => {
         roomUserChangeCallback(['user1', 'user2']);
         // The callback should be called when room state changes
         expect(mockCallback).toHaveBeenCalled();
+        // Collaborators callback should be called with user array (managed by Excalidraw API)
+        expect(mockCollaboratorsCallback).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'user1' }),
+            expect.objectContaining({ id: 'user2' })
+          ])
+        );
       }
     });
 
@@ -131,6 +139,26 @@ describe('Collab Component', () => {
       }
     });
 
+    it('should handle username-updated event with Excalidraw official API', () => {
+      const mockCollaboratorsCallback = vi.fn();
+      render(<Collab onCollaboratorsChange={mockCollaboratorsCallback} />);
+      
+      // Get the callback function passed to socket.on for 'username-updated'
+      const usernameUpdatedCallback = mockSocket.on.mock.calls.find(
+        call => call[0] === 'username-updated'
+      )?.[1];
+      
+      expect(usernameUpdatedCallback).toBeDefined();
+      
+      if (usernameUpdatedCallback) {
+        // Simulate username update event
+        usernameUpdatedCallback({ socketId: 'user1', username: 'Updated User' });
+        
+        // Verify the callback was called (collaborators are now managed by Excalidraw API)
+        expect(mockCollaboratorsCallback).toHaveBeenCalled();
+      }
+    });
+
     it('should cleanup socket listeners on unmount', () => {
       const { unmount } = render(<Collab />);
       
@@ -140,6 +168,7 @@ describe('Collab Component', () => {
       expect(mockSocket.off).toHaveBeenCalledWith('init-room');
       expect(mockSocket.off).toHaveBeenCalledWith('new-user');
       expect(mockSocket.off).toHaveBeenCalledWith('room-user-change');
+      expect(mockSocket.off).toHaveBeenCalledWith('username-updated');
       expect(mockSocket.off).toHaveBeenCalledWith('first-in-room');
       expect(mockSocket.off).toHaveBeenCalledWith('error');
       expect(mockSocket.off).toHaveBeenCalledWith('client-broadcast');

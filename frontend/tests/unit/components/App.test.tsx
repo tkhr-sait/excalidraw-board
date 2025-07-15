@@ -21,7 +21,7 @@ vi.mock('@excalidraw/excalidraw', () => {
   };
   
   return {
-    Excalidraw: vi.fn(({ onChange }) => {
+    Excalidraw: vi.fn(({ onChange, renderTopRightUI }) => {
       // Simulate Excalidraw with a simple div and onChange trigger
       return (
         <div data-testid="excalidraw-mock">
@@ -31,11 +31,23 @@ vi.mock('@excalidraw/excalidraw', () => {
           >
             Trigger Change
           </button>
+          {renderTopRightUI && renderTopRightUI()}
         </div>
       );
     }),
     MainMenu: MainMenuMock,
     WelcomeScreen: WelcomeScreenMock,
+    LiveCollaborationTrigger: vi.fn(({ isCollaborating, onSelect }) => (
+      <button 
+        onClick={onSelect}
+        data-testid="live-collaboration-trigger-mock"
+      >
+        {isCollaborating ? 'Stop Collaboration' : 'Start Collaboration'}
+      </button>
+    )),
+    reconcileElements: vi.fn((local, remote) => remote),
+    restoreElements: vi.fn((elements) => elements),
+    getSceneVersion: vi.fn(() => 1),
   };
 });
 
@@ -92,5 +104,14 @@ describe('App', () => {
     // This test verifies the component can handle collaborators changes
     const button = screen.getByTestId('mock-collaborators-change');
     expect(button).toBeInTheDocument();
+  });
+
+  it('should render LiveCollaborationTrigger using Excalidraw official API', () => {
+    render(<App />);
+    
+    // Verify that LiveCollaborationTrigger is rendered (using Excalidraw's official component)
+    const trigger = screen.getByTestId('live-collaboration-trigger-mock');
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveTextContent('Start Collaboration');
   });
 });

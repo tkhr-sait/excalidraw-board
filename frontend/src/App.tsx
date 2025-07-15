@@ -13,7 +13,7 @@ import type {
   AppState,
   ExcalidrawImperativeAPI,
 } from './types/excalidraw';
-import type { RoomUser, CollaboratorPointer } from './types/socket';
+import type { RoomUser } from './types/socket';
 import { saveToLocalStorage, loadFromLocalStorage } from './utils/storage';
 import { getOrCreateUsername, saveUsername } from './utils/random-names';
 import { getSceneElementsIncludingDeleted, RecentlyDeletedElementsTracker } from './utils/element-sync';
@@ -40,9 +40,6 @@ function App() {
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<RoomUser[]>([]);
-  const [, setCollaboratorPointers] = useState<
-    Map<string, CollaboratorPointer>
-  >(new Map());
   const [showRoomDialog, setShowRoomDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [roomDialogError, setRoomDialogError] = useState<string | null>(null);
@@ -242,47 +239,26 @@ function App() {
   }, [_reconcileElements, handleRemoteSceneUpdate]);
 
   const handleCollabPointerUpdate = useCallback(throttle((data: { userId: string; x: number; y: number; username?: string; selectedElementIds?: readonly string[] }) => {
-    console.log('Received pointer update from Collab:', {
-      userId: data.userId,
-      position: { x: data.x, y: data.y },
-      username: data.username,
-      selectedElementIds: data.selectedElementIds,
-      selectionCount: data.selectedElementIds?.length || 0
-    });
-    setCollaboratorPointers(prev => {
-      const updated = new Map(prev);
-      updated.set(data.userId, data);
-      return updated;
-    });
-
-    // Update Excalidraw collaborators with pointer position and username
+    // Update Excalidraw collaborators with pointer using official API
     if (excalidrawAPIRef.current) {
-      // Build complete collaborators map from all collaborators
-      const collaboratorsMap = new Map();
+      // Get current collaborators map from Excalidraw
+      const currentAppState = excalidrawAPIRef.current.getAppState();
+      const collaboratorsMap = new Map(currentAppState.collaborators || new Map());
       
-      // Add all current collaborators to the map
-      collaborators.forEach(collaborator => {
-        collaboratorsMap.set(collaborator.id, {
-          username: collaborator.username,
-          avatarUrl: null,
-          color: {
-            background: collaborator.color,
-            stroke: collaborator.color,
-          },
-          pointer: undefined, // Will be updated below if this is the user with pointer update
-          selectedElementIds: [],
-        });
-      });
-      
-      // Update the specific user's pointer information
+      // Find collaborator info from our state
       const collaborator = collaborators.find(c => c.id === data.userId);
       const username = data.username || collaborator?.username || `User ${data.userId.slice(0, 6)}`;
       const color = collaborator?.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`;
       
+      // Get existing collaborator to preserve any other properties
+      const existingCollaborator = collaboratorsMap.get(data.userId) || {};
+      
+      // Update collaborator with new pointer information
       collaboratorsMap.set(data.userId, {
+        ...existingCollaborator, // Preserve existing properties
         username: username,
-        avatarUrl: null,
-        color: {
+        avatarUrl: existingCollaborator.avatarUrl || null,
+        color: existingCollaborator.color || {
           background: color,
           stroke: color,
         },
@@ -293,19 +269,14 @@ function App() {
         selectedElementIds: data.selectedElementIds || [],
       });
 
-      console.log('Updating Excalidraw collaborators with pointer:', {
-        totalCollaborators: collaboratorsMap.size,
-        updatedUserId: data.userId,
-        collaboratorsIds: Array.from(collaboratorsMap.keys())
-      });
-
+      // Use Excalidraw's official updateScene method for collaborator pointers
       excalidrawAPIRef.current.updateScene({
         appState: {
           collaborators: collaboratorsMap,
         },
       });
     }
-  }, 16), [collaborators]);
+  }, 16), [collaborators]); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
 
   // 公式方式: CaptureUpdateAction.NEVERにより複雑なフラグ管理は不要
   
@@ -411,11 +382,7 @@ function App() {
           ? Object.keys(appState.selectedElementIds).filter(id => appState.selectedElementIds![id])
           : [];
         
-        console.log('Broadcasting pointer update with selection:', {
-          pointer: payload.pointer,
-          selectedElementIds: selectedElementIds,
-          selectionCount: selectedElementIds.length
-        });
+        // Throttled broadcast to prevent excessive network traffic
         collabRef.current.broadcastPointerUpdate(payload.pointer.x, payload.pointer.y, selectedElementIds);
       }
     },
@@ -448,7 +415,6 @@ function App() {
       } else if (!collaborating) {
         // Stop collaboration
         collaboration.stopCollaboration();
-        setCollaboratorPointers(new Map());
         setCurrentRoomId(null);
         setCurrentUsername(null);
         setIsConnecting(false);
@@ -457,11 +423,11 @@ function App() {
     [collaboration]
   );
 
-  // コラボレーター変更のハンドラ
+  // コラボレーター変更のハンドラ - Excalidraw本体機能を使用
   const handleCollaboratorsChange = useCallback((newCollaborators: RoomUser[]) => {
     setCollaborators(newCollaborators);
     
-    // Update Excalidraw's appState.collaborators for LiveCollaborationTrigger
+    // Update Excalidraw's appState.collaborators using official API
     if (excalidrawAPIRef.current) {
       const collaboratorsMap = new Map();
       newCollaborators.forEach(collaborator => {
@@ -472,14 +438,17 @@ function App() {
             background: collaborator.color,
             stroke: collaborator.color,
           },
+          pointer: undefined, // Will be updated by pointer events
+          selectedElementIds: [], // Will be updated by pointer events
         });
       });
       
-      console.log('Updating Excalidraw appState.collaborators:', {
+      console.log('Updating Excalidraw collaborators using official API:', {
         collaboratorsCount: newCollaborators.length,
         collaboratorsMap: Array.from(collaboratorsMap.entries())
       });
       
+      // Use Excalidraw's official updateScene method for collaborators
       excalidrawAPIRef.current.updateScene({
         appState: {
           collaborators: collaboratorsMap,
