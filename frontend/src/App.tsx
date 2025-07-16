@@ -26,6 +26,7 @@ import { CollabFooter } from './components/collab/CollabFooter';
 import { CollabMobileMenu } from './components/collab/CollabMobileMenu';
 import { RoomDialog } from './components/collab/RoomDialog';
 import { ShareDialog } from './components/collab/ShareDialog';
+import { Minimap } from './components/collab/Minimap';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
@@ -52,6 +53,14 @@ function App() {
     roomId: string;
     username: string;
   } | null>(null);
+  // Viewport and cursor data for minimap
+  const [cursorData, setCursorData] = useState<
+    Map<string, { x: number; y: number; username?: string }>
+  >(new Map());
+  const [currentElements, setCurrentElements] = useState<
+    readonly ExcalidrawElement[]
+  >([]);
+  const [currentAppState, setCurrentAppState] = useState<Partial<AppState>>({});
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -292,6 +301,8 @@ function App() {
     }) => {
       console.log('Received viewport update:', data);
 
+      // Viewport data is no longer tracked (removed from minimap)
+
       // Check if we are following this user
       if (excalidrawAPIRef.current) {
         const appState = excalidrawAPIRef.current.getAppState();
@@ -324,6 +335,17 @@ function App() {
         username?: string;
         selectedElementIds?: readonly string[];
       }) => {
+        // Update cursor data for minimap
+        setCursorData((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(data.userId, {
+            x: data.x,
+            y: data.y,
+            username: data.username,
+          });
+          return newMap;
+        });
+
         // Update Excalidraw collaborators with pointer using official API
         if (excalidrawAPIRef.current) {
           // Get current collaborators map from Excalidraw
@@ -417,6 +439,10 @@ function App() {
         elements: elements.length,
         isCollaborating,
       });
+
+      // Update current elements and app state for minimap
+      setCurrentElements(elements);
+      setCurrentAppState(appState);
 
       // Track element deletions for proper sync
       if (excalidrawAPIRef.current) {
@@ -626,6 +652,19 @@ function App() {
     (newCollaborators: RoomUser[]) => {
       setCollaborators(newCollaborators);
 
+      // Clean up cursor data for removed collaborators
+      const collaboratorIds = new Set(newCollaborators.map((c) => c.id));
+
+      setCursorData((prev) => {
+        const newMap = new Map(prev);
+        for (const [userId] of newMap) {
+          if (!collaboratorIds.has(userId)) {
+            newMap.delete(userId);
+          }
+        }
+        return newMap;
+      });
+
       // Update Excalidraw's appState.collaborators using official API
       if (excalidrawAPIRef.current) {
         const collaboratorsMap = new Map();
@@ -749,6 +788,21 @@ function App() {
     console.log('App: Username changed to:', newUsername);
   }, []);
 
+  // Handle viewport change from minimap
+  const handleMinimapViewportChange = useCallback(
+    (scrollX: number, scrollY: number) => {
+      if (excalidrawAPIRef.current) {
+        excalidrawAPIRef.current.updateScene({
+          appState: {
+            scrollX,
+            scrollY,
+          },
+        });
+      }
+    },
+    []
+  );
+
   return (
     <div className="app">
       {/* Hidden Collab component for backend functionality */}
@@ -840,6 +894,29 @@ function App() {
           )}
         </Excalidraw>
       </div>
+
+      {/* Minimap - show by default */}
+      {(currentElements.length > 0 ||
+        Object.keys(currentAppState).length > 0) && (
+        <Minimap
+          elements={currentElements}
+          appState={{
+            scrollX: currentAppState.scrollX || 0,
+            scrollY: currentAppState.scrollY || 0,
+            zoom:
+              typeof currentAppState.zoom === 'number'
+                ? { value: currentAppState.zoom }
+                : currentAppState.zoom || { value: 1 },
+            width: window.innerWidth,
+            height: window.innerHeight,
+          }}
+          collaborators={collaborators}
+          cursorData={cursorData}
+          onViewportChange={handleMinimapViewportChange}
+          isCollaborating={isCollaborating}
+          excalidrawAPI={excalidrawAPIRef.current}
+        />
+      )}
 
       {/* Room dialog */}
       {showRoomDialog && (

@@ -1,0 +1,141 @@
+.minimap-container {
+  position: fixed;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  z-index: 5; /* Below help button (z-index: 10) */
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  user-select: none;
+}
+
+.minimap-container--collapsed {
+  width: auto;
+  height: auto;
+}
+
+.minimap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e5e5;
+  cursor: move;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.minimap-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #495057;
+  user-select: none;
+}
+
+.minimap-icon svg {
+  display: block;
+}
+
+.minimap-toggle {
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.minimap-toggle:hover {
+  color: #495057;
+}
+
+.minimap-canvas {
+  display: block;
+  cursor: crosshair;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.minimap-canvas--dragging {
+  cursor: grabbing;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .minimap-container {
+    bottom: 80px; /* Above mobile toolbar */
+    right: 10px;
+    transform: scale(0.8);
+    transform-origin: bottom right;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .minimap-container {
+    background: rgba(30, 30, 30, 0.95);
+    border-color: #444;
+  }
+
+  .minimap-header {
+    background: #2a2a2a;
+    border-bottom-color: #444;
+  }
+
+  .minimap-icon {
+    color: #e0e0e0;
+  }
+
+  .minimap-toggle {
+    color: #adb5bd;
+  }
+
+  .minimap-toggle:hover {
+    color: #e0e0e0;
+  }
+}
+
+/* Animation for show/hide */
+.minimap-container {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Moving state for the minimap container */
+.minimap-container--moving {
+  opacity: 0.8;
+  cursor: move;
+}
+
+.minimap-container--moving .minimap-canvas {
+  pointer-events: none;
+}
+
+/* Prevent text selection during drag */
+.minimap-container--moving * {
+  cursor: move !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  user-select: none !important;
+}
