@@ -171,6 +171,10 @@ function App() {
         appState: {
           ...savedData.appState,
           collaborators: new Map(),
+          // デフォルト値を設定（保存データがある場合でも適用）
+          currentItemRoughness: 0, // 0 = architect, 1 = artist, 2 = cartoonist
+          currentItemRoundness: 'sharp', // 'sharp' | 'round'
+          currentItemFontFamily: 2, // 1 = Virgil, 2 = Helvetica (normal), 3 = Cascadia
         },
       });
     } else {
@@ -178,6 +182,10 @@ function App() {
         elements: [],
         appState: {
           collaborators: new Map(),
+          // デフォルト値を設定
+          currentItemRoughness: 0, // 0 = architect, 1 = artist, 2 = cartoonist
+          currentItemRoundness: 'sharp', // 'sharp' | 'round'
+          currentItemFontFamily: 2, // 1 = Virgil, 2 = Helvetica (normal), 3 = Cascadia
         },
       });
     }
