@@ -54,6 +54,7 @@ export interface AppState {
   currentItemStrokeWidth?: number;
   currentItemStrokeStyle?: string;
   currentItemRoughness?: number;
+  currentItemRoundness?: string;
   currentItemOpacity?: number;
   currentItemFontFamily?: number;
   currentItemFontSize?: number;
