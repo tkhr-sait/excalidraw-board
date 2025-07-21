@@ -101,6 +101,7 @@ export interface SocketUpdateDataSource {
           dataURL: string;
           created: number;
           lastRetrieved?: number;
+          id: string;
         };
       };
     };
