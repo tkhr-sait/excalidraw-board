@@ -31,6 +31,8 @@ export const WS_SUBTYPES = {
   IDLE_STATUS: 'IDLE_STATUS',
   USER_VISIBLE_SCENE_BOUNDS: 'USER_VISIBLE_SCENE_BOUNDS',
   INVALID_RESPONSE: 'INVALID_RESPONSE',
+  IMAGE_REQUEST: 'IMAGE_REQUEST',
+  IMAGE_RESPONSE: 'IMAGE_RESPONSE',
 } as const;
 
 export const WS_EVENTS = {
@@ -80,6 +82,28 @@ export interface SocketUpdateDataSource {
       socketId: string;
       username: string;
       sceneBounds: { x: number; y: number; width: number; height: number; zoom?: number };
+    };
+  };
+  IMAGE_REQUEST: {
+    type: typeof WS_SUBTYPES.IMAGE_REQUEST;
+    payload: {
+      socketId: string;
+      fileIds: string[];
+    };
+  };
+  IMAGE_RESPONSE: {
+    type: typeof WS_SUBTYPES.IMAGE_RESPONSE;
+    payload: {
+      socketId: string;
+      files: {
+        [fileId: string]: {
+          mimeType: string;
+          dataURL: string;
+          created: number;
+          lastRetrieved?: number;
+          id: string;
+        };
+      };
     };
   };
 }

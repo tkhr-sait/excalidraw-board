@@ -38,6 +38,10 @@ export interface ExcalidrawElement {
   endBinding?: ElementBinding | null;
   startArrowhead?: string | null;
   endArrowhead?: string | null;
+  // For image elements
+  fileId?: string;
+  scale?: [number, number];
+  status?: 'pending' | 'saved' | 'error';
 }
 
 export interface ElementBinding {
@@ -107,6 +111,8 @@ export interface ExcalidrawImperativeAPI {
   refresh: () => void;
   // Check if getSceneElementsIncludingDeleted exists
   getSceneElementsIncludingDeleted?: () => readonly ExcalidrawElement[];
+  getFiles: () => BinaryFiles;
+  addFiles: (files: BinaryFiles) => void;
 }
 
 export interface SceneData {
