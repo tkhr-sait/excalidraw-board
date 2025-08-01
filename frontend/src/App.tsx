@@ -131,21 +131,6 @@ function App() {
               username: pendingUrlJoin.username,
             });
             console.log('joinRoom called successfully for URL login');
-
-            // Set a timeout to check if collaboration started
-            setTimeout(() => {
-              if (!isCollaborating) {
-                console.warn(
-                  'URL join may have failed - collaboration not started after 2 seconds'
-                );
-                // Don't clear pendingUrlJoin yet, let user try manually
-                setIsConnecting(false);
-                setShowRoomDialog(true);
-              } else {
-                console.log('URL join successful - collaboration started');
-                setPendingUrlJoin(null); // ペンディング状態をクリア
-              }
-            }, 2000);
           }
         } catch (error) {
           console.error('Error joining room from URL:', error);
@@ -153,7 +138,6 @@ function App() {
             error instanceof Error ? error.message : 'Unknown error occurred'
           );
           setIsConnecting(false);
-          setShowRoomDialog(true); // エラー時はダイアログを表示
           setPendingUrlJoin(null);
         }
       }, 100); // Small delay to ensure components are ready
@@ -653,6 +637,9 @@ function App() {
         setCurrentRoomId(roomId || null);
         setCurrentUsername(username || null);
         console.log('Set room and username:', { roomId, username });
+        // Clear pending URL join state on successful collaboration start
+        setPendingUrlJoin(null);
+        console.log('Cleared pending URL join - collaboration started successfully');
         // Close dialog and reset states on successful connection
         setShowRoomDialog(false);
         setIsConnecting(false);
