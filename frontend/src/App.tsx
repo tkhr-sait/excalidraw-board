@@ -758,7 +758,41 @@ function App() {
   // ルーム参加処理
   const handleJoinRoom = useCallback(
     (data: { roomId: string; username: string }) => {
-      if (collabRef.current) {
+      if (collabRef.current && excalidrawAPIRef.current) {
+        // すでに共有中かチェック
+        if (isCollaborating && currentRoomId) {
+          const confirmSwitch = window.confirm(
+            `現在ルーム「${currentRoomId}」で共有中です。\n新しいルーム「${data.roomId}」に切り替えますか？\n\n注意：現在の共有は終了し、キャンバスの内容は削除されます。`
+          );
+          
+          if (!confirmSwitch) {
+            setIsConnecting(false);
+            return;
+          }
+          
+          // 現在のルームから退出
+          collabRef.current.leaveRoom();
+        } else {
+          // 共有中でない場合、キャンバスに要素があるかチェック
+          const elements = excalidrawAPIRef.current.getSceneElements();
+          if (elements && elements.length > 0) {
+            const confirmed = window.confirm(
+              'キャンバスに描画内容があります。コラボレーションに参加すると、現在の内容は削除されます。続行しますか？'
+            );
+            
+            if (!confirmed) {
+              setIsConnecting(false);
+              return; // キャンセルされた場合は参加処理を中止
+            }
+          }
+        }
+        
+        // キャンバスをクリア
+        excalidrawAPIRef.current.updateScene({
+          elements: [],
+          appState: {},
+        });
+        
         setIsConnecting(true);
         setRoomDialogError(null);
         try {
@@ -776,7 +810,7 @@ function App() {
       setShowShareDialog(false);
       setIsConnecting(false);
     },
-    []
+    [isCollaborating, currentRoomId]
   );
 
   // ルーム退出処理
