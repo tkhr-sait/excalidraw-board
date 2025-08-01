@@ -26,7 +26,8 @@ export class SyncPortal {
   broadcastScene = async (
     updateType: typeof WS_SUBTYPES.INIT | typeof WS_SUBTYPES.UPDATE,
     elements: readonly SyncableElement[],
-    syncAll: boolean
+    syncAll: boolean,
+    files?: any
   ) => {
     if (updateType === WS_SUBTYPES.INIT && !syncAll) {
       throw new Error('syncAll must be true when sending SCENE.INIT');
@@ -53,6 +54,7 @@ export class SyncPortal {
       type: updateType,
       payload: {
         elements: syncableElements,
+        ...(files && { files }),
       },
     } as SocketUpdateData;
 

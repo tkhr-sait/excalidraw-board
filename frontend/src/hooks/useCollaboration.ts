@@ -7,9 +7,9 @@ export interface CollaborationAPI {
   syncPortal: SyncPortal;
   
   // シーン同期 - 公式と同じAPI
-  syncElements: (elements: readonly SyncableElement[]) => void;
-  broadcastScene: (elements: readonly SyncableElement[], syncAll?: boolean) => void;
-  broadcastSceneUpdate: (elements: readonly SyncableElement[]) => void;
+  syncElements: (elements: readonly SyncableElement[], files?: any) => void;
+  broadcastScene: (elements: readonly SyncableElement[], syncAll?: boolean, files?: any) => void;
+  broadcastSceneUpdate: (elements: readonly SyncableElement[], files?: any) => void;
   
   // マウス・ユーザー操作
   broadcastMouseLocation: (pointer: { x: number; y: number }, button?: 'up' | 'down') => void;
@@ -35,7 +35,7 @@ export function useCollaboration(): CollaborationAPI {
   const [lastBroadcastedVersion, setLastBroadcastedVersion] = useState(-1);
 
   // 改善されたsyncElements実装（要素数とハッシュによる変化検知）
-  const syncElements = useCallback((elements: readonly SyncableElement[]) => {
+  const syncElements = useCallback((elements: readonly SyncableElement[], files?: any) => {
     if (!isCollaborating) return;
     
     const currentVersion = Math.max(...elements.map(el => el.version || 0), 0);
@@ -63,7 +63,8 @@ export function useCollaboration(): CollaborationAPI {
         lastBroadcastedVersion,
         forceInitial: lastBroadcastedVersion === -1,
         reason,
-        elementsChanged: elementsHash !== lastHash
+        elementsChanged: elementsHash !== lastHash,
+        filesIncluded: files ? Object.keys(files).length : 0
       });
       
       // 詳細な要素情報をログ出力
@@ -77,7 +78,7 @@ export function useCollaboration(): CollaborationAPI {
       
       // 初回の場合はINITとして送信、それ以外はUPDATE
       const messageType = lastBroadcastedVersion === -1 ? WS_SUBTYPES.INIT : WS_SUBTYPES.UPDATE;
-      syncPortal.broadcastScene(messageType, elements, lastBroadcastedVersion === -1);
+      syncPortal.broadcastScene(messageType, elements, lastBroadcastedVersion === -1, files);
       setLastBroadcastedVersion(currentVersion);
       
       // 要素数とハッシュを記録
@@ -89,14 +90,16 @@ export function useCollaboration(): CollaborationAPI {
   // シーン全体のブロードキャスト
   const broadcastScene = useCallback((
     elements: readonly SyncableElement[], 
-    syncAll: boolean = false
+    syncAll: boolean = false,
+    files?: any
   ) => {
     if (!isCollaborating) return;
     
     syncPortal.broadcastScene(
       syncAll ? WS_SUBTYPES.INIT : WS_SUBTYPES.UPDATE,
       elements,
-      syncAll
+      syncAll,
+      files
     );
     
     const currentVersion = Math.max(...elements.map(el => el.version || 0), 0);
@@ -104,14 +107,14 @@ export function useCollaboration(): CollaborationAPI {
   }, [syncPortal, isCollaborating, lastBroadcastedVersion]);
 
   // インクリメンタル更新
-  const broadcastSceneUpdate = useCallback((elements: readonly SyncableElement[]) => {
+  const broadcastSceneUpdate = useCallback((elements: readonly SyncableElement[], files?: any) => {
     if (!isCollaborating) return;
     
     const currentVersion = Math.max(...elements.map(el => el.version));
     
     // バージョンが変更された場合のみ送信
     if (currentVersion > lastBroadcastedVersion) {
-      syncPortal.broadcastScene(WS_SUBTYPES.UPDATE, elements, false);
+      syncPortal.broadcastScene(WS_SUBTYPES.UPDATE, elements, false, files);
       setLastBroadcastedVersion(currentVersion);
       
       // 定期的な全体同期のスケジュール
