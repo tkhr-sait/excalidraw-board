@@ -19,6 +19,7 @@ import { WS_SUBTYPES } from '../../types/socket';
 import type { BinaryFiles } from '../../types/excalidraw';
 import { CollabToolbar } from './CollabToolbar';
 import { RoomDialog } from './RoomDialog';
+import { FeatureFlags } from '../../utils/feature-flags';
 import './Collab.css';
 
 // Generate deterministic encryption key from room ID so all users have the same key
@@ -348,10 +349,14 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
             (el: any) => el.type === 'image' && el.fileId
           );
           if (imageElements.length > 0) {
-            const uniqueFileIds = [...new Set(imageElements
-              .map((el: any) => el.fileId)
-              .filter((fileId: string) => fileId))];
-            
+            const uniqueFileIds = [
+              ...new Set(
+                imageElements
+                  .map((el: any) => el.fileId)
+                  .filter((fileId: string) => fileId)
+              ),
+            ];
+
             // Notify parent to check if these files exist locally
             if (uniqueFileIds.length > 0) {
               console.log('Found image elements with fileIds:', uniqueFileIds);
@@ -402,12 +407,22 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
         case WS_SUBTYPES.IMAGE_REQUEST:
           // Handle image data request from other users
           console.log('Image request received:', decryptedData.payload);
+          // Skip image handling if feature is disabled
+          if (!FeatureFlags.isImageSharingEnabled()) {
+            console.log('Image sharing is disabled by feature flag');
+            break;
+          }
           const { fileIds } = decryptedData.payload;
           onImageRequest?.(fileIds);
           break;
         case WS_SUBTYPES.IMAGE_RESPONSE:
           // Handle image data response from other users
           console.log('Image response received:', decryptedData.payload);
+          // Skip image handling if feature is disabled
+          if (!FeatureFlags.isImageSharingEnabled()) {
+            console.log('Image sharing is disabled by feature flag');
+            break;
+          }
           const { files } = decryptedData.payload;
           onImageReceived?.(files);
           break;

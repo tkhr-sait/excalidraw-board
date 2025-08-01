@@ -31,6 +31,7 @@ import { Minimap } from './components/collab/Minimap';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
+import { FeatureFlags } from './utils/feature-flags';
 import './App.css';
 import './styles/excalidraw-overrides.css';
 
@@ -63,7 +64,9 @@ function App() {
   >([]);
   const [currentAppState, setCurrentAppState] = useState<Partial<AppState>>({});
   // Pending image requests that need to be sent
-  const [pendingImageRequests, setPendingImageRequests] = useState<string[]>([]);
+  const [pendingImageRequests, setPendingImageRequests] = useState<string[]>(
+    []
+  );
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -815,82 +818,95 @@ function App() {
   );
 
   // Handle image request from remote users
-  const handleImageRequest = useCallback(
-    async (fileIds: string[]) => {
-      if (!excalidrawAPIRef.current || !collabRef.current) return;
+  const handleImageRequest = useCallback(async (fileIds: string[]) => {
+    // Skip image handling if feature is disabled
+    if (!FeatureFlags.isImageSharingEnabled()) {
+      console.log('Image sharing is disabled by feature flag');
+      return;
+    }
 
-      try {
-        // Get all files from Excalidraw
-        const files = excalidrawAPIRef.current.getFiles();
-        const filesToSend: BinaryFiles = {};
+    if (!excalidrawAPIRef.current || !collabRef.current) return;
 
-        // Filter files that were requested
-        for (const fileId of fileIds) {
-          if (files[fileId]) {
-            filesToSend[fileId] = files[fileId];
-          }
+    try {
+      // Get all files from Excalidraw
+      const files = excalidrawAPIRef.current.getFiles();
+      const filesToSend: BinaryFiles = {};
+
+      // Filter files that were requested
+      for (const fileId of fileIds) {
+        if (files[fileId]) {
+          filesToSend[fileId] = files[fileId];
         }
-
-        // Send files to remote users if we have any
-        if (Object.keys(filesToSend).length > 0) {
-          console.log('Sending image files to remote users:', Object.keys(filesToSend));
-          await collabRef.current.broadcastImageResponse(filesToSend);
-        }
-      } catch (error) {
-        console.error('Error handling image request:', error);
       }
-    },
-    []
-  );
+
+      // Send files to remote users if we have any
+      if (Object.keys(filesToSend).length > 0) {
+        console.log(
+          'Sending image files to remote users:',
+          Object.keys(filesToSend)
+        );
+        await collabRef.current.broadcastImageResponse(filesToSend);
+      }
+    } catch (error) {
+      console.error('Error handling image request:', error);
+    }
+  }, []);
 
   // Handle received image files from remote users
-  const handleImageReceived = useCallback(
-    (files: BinaryFiles) => {
-      if (!excalidrawAPIRef.current) return;
+  const handleImageReceived = useCallback((files: BinaryFiles) => {
+    // Skip image handling if feature is disabled
+    if (!FeatureFlags.isImageSharingEnabled()) {
+      console.log('Image sharing is disabled by feature flag');
+      return;
+    }
 
-      try {
-        console.log('Received image files from remote users:', Object.keys(files));
-        
-        // Add files to Excalidraw
-        excalidrawAPIRef.current.addFiles(files);
-        
-        // Clear pending requests for these files
-        setPendingImageRequests((prev) => 
-          prev.filter((fileId) => !files[fileId])
-        );
-      } catch (error) {
-        console.error('Error handling received images:', error);
-      }
-    },
-    []
-  );
+    if (!excalidrawAPIRef.current) return;
+
+    try {
+      console.log(
+        'Received image files from remote users:',
+        Object.keys(files)
+      );
+
+      // Add files to Excalidraw
+      excalidrawAPIRef.current.addFiles(files);
+
+      // Clear pending requests for these files
+      setPendingImageRequests((prev) =>
+        prev.filter((fileId) => !files[fileId])
+      );
+    } catch (error) {
+      console.error('Error handling received images:', error);
+    }
+  }, []);
 
   // Check which files are missing locally and add to pending requests
-  const handleCheckMissingFiles = useCallback(
-    (fileIds: string[]) => {
-      if (!excalidrawAPIRef.current) return;
+  const handleCheckMissingFiles = useCallback((fileIds: string[]) => {
+    if (!excalidrawAPIRef.current) return;
 
-      try {
-        const files = excalidrawAPIRef.current.getFiles();
-        const missingFileIds = fileIds.filter((fileId) => !files[fileId]);
-        
-        if (missingFileIds.length > 0) {
-          console.log('Missing image files detected:', missingFileIds);
-          setPendingImageRequests((prev) => {
-            const newRequests = [...new Set([...prev, ...missingFileIds])];
-            return newRequests;
-          });
-        }
-      } catch (error) {
-        console.error('Error checking missing files:', error);
+    try {
+      const files = excalidrawAPIRef.current.getFiles();
+      const missingFileIds = fileIds.filter((fileId) => !files[fileId]);
+
+      if (missingFileIds.length > 0) {
+        console.log('Missing image files detected:', missingFileIds);
+        setPendingImageRequests((prev) => {
+          const newRequests = [...new Set([...prev, ...missingFileIds])];
+          return newRequests;
+        });
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error('Error checking missing files:', error);
+    }
+  }, []);
 
   // Request missing image files when detected
   useEffect(() => {
-    if (pendingImageRequests.length > 0 && collabRef.current && isCollaborating) {
+    if (
+      pendingImageRequests.length > 0 &&
+      collabRef.current &&
+      isCollaborating
+    ) {
       const requestImageFiles = async () => {
         try {
           await collabRef.current!.broadcastImageRequest(pendingImageRequests);
