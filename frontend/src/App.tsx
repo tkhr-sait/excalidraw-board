@@ -28,10 +28,15 @@ import { CollabMobileMenu } from './components/collab/CollabMobileMenu';
 import { RoomDialog } from './components/collab/RoomDialog';
 import { ShareDialog } from './components/collab/ShareDialog';
 import { Minimap } from './components/collab/Minimap';
+import { HistoryViewer } from './components/collab/HistoryViewer';
+import { HistoryExportDialog } from './components/collab/HistoryExportDialog';
+import { RoomHistoryManager } from './components/collab/RoomHistoryManager';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
 import { FeatureFlags } from './utils/feature-flags';
+import { CollaborationHistoryService } from './services/collaboration-history';
+import type { HistoryEntry } from './types/history';
 import './App.css';
 import './styles/excalidraw-overrides.css';
 
@@ -63,6 +68,11 @@ function App() {
     readonly ExcalidrawElement[]
   >([]);
   const [currentAppState, setCurrentAppState] = useState<Partial<AppState>>({});
+  const [historyService] = useState(() => new CollaborationHistoryService());
+  const [showHistoryViewer, setShowHistoryViewer] = useState(false);
+  const [showRoomHistoryManager, setShowRoomHistoryManager] = useState(false);
+  const [historyExportEntry, setHistoryExportEntry] = useState<HistoryEntry | null>(null);
+  const [historyCount, setHistoryCount] = useState(0);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -281,8 +291,23 @@ function App() {
         // 0でも更新する
         handleRemoteSceneUpdate(reconciledElements);
       }
+
+      // Save history with debounce and update count
+      if (isCollaborating && collaboration.roomKey && currentUsername) {
+        historyService.saveHistoryEntry(
+          collaboration.roomKey,
+          currentUsername,
+          [...reconciledElements] as ExcalidrawElement[],
+          data.appState,
+          excalidrawAPIRef.current?.getFiles(),
+          false,
+          currentRoomId || undefined
+        );
+        const history = historyService.getHistory(collaboration.roomKey);
+        setHistoryCount(history.entries.length);
+      }
     },
-    [_reconcileElements, handleRemoteSceneUpdate]
+    [_reconcileElements, handleRemoteSceneUpdate, isCollaborating, collaboration.roomKey, currentUsername, currentRoomId, historyService]
   );
 
   // Collab コンポーネントからのビューポート更新受信
@@ -456,6 +481,21 @@ function App() {
         recentlyDeletedTracker.current.cleanup();
       }
 
+      // Save history with debounce and update count
+      if (isCollaborating && collaboration.roomKey && currentUsername) {
+        historyService.saveHistoryEntry(
+          collaboration.roomKey,
+          currentUsername,
+          elements,
+          appState,
+          files,
+          false,
+          currentRoomId || undefined
+        );
+        const history = historyService.getHistory(collaboration.roomKey);
+        setHistoryCount(history.entries.length);
+      }
+
       // 公式方式: コラボレーション同期（削除された要素も含む）
       if (
         isCollaborating &&
@@ -490,7 +530,7 @@ function App() {
         saveToLocalStorage({ elements, appState, files });
       }
     },
-    [isCollaborating, collaboration]
+    [isCollaborating, collaboration, currentUsername, currentRoomId, historyService]
   );
 
   // Excalidrawコンポーネントがマウントされたとき
@@ -644,15 +684,24 @@ function App() {
         setShowRoomDialog(false);
         setIsConnecting(false);
         setRoomDialogError(null);
+        
+        // Initialize history for this room
+        const history = historyService.getHistory(roomKey);
+        setHistoryCount(history.entries.length);
       } else if (!collaborating) {
         // Stop collaboration
         collaboration.stopCollaboration();
         setCurrentRoomId(null);
         setCurrentUsername(null);
         setIsConnecting(false);
+        
+        // Stop debounced saving for this room
+        if (roomKey) {
+          historyService.stopHistorySaving(roomKey);
+        }
       }
     },
-    [collaboration]
+    [collaboration, historyService, currentUsername]
   );
 
   // コラボレーター変更のハンドラ - Excalidraw本体機能を使用
@@ -894,7 +943,7 @@ function App() {
           onPointerUpdate={handlePointerUpdate}
           onScrollChange={handleScrollChange}
           langCode="ja"
-          theme="light"
+          theme={(currentAppState as any).theme || "light"}
           name="Excalidraw Board"
           UIOptions={{
             canvasActions: {
@@ -959,6 +1008,9 @@ function App() {
               roomId={currentRoomId}
               currentUserId={currentUsername || ''}
               onUsernameChange={handleUsernameChange}
+              onShowHistory={() => setShowHistoryViewer(true)}
+              onShowRoomHistory={() => setShowRoomHistoryManager(true)}
+              historyCount={historyCount}
             />
           )}
         </Excalidraw>
@@ -1014,6 +1066,40 @@ function App() {
           currentRoomId={currentRoomId}
           currentUsername={currentUsername}
           collaborators={collaborators}
+        />
+      )}
+
+      {/* History Viewer */}
+      {showHistoryViewer && collaboration.roomKey && (
+        <HistoryViewer
+          roomId={collaboration.roomKey}
+          historyService={historyService}
+          theme={(currentAppState as any).theme || "light"}
+          onClose={() => setShowHistoryViewer(false)}
+          onExport={(entry) => {
+            setHistoryExportEntry(entry);
+            setShowHistoryViewer(false);
+          }}
+        />
+      )}
+
+      {/* History Export Dialog */}
+      {historyExportEntry && collaboration.roomKey && (
+        <HistoryExportDialog
+          roomId={collaboration.roomKey}
+          historyService={historyService}
+          entry={historyExportEntry}
+          theme={(currentAppState as any).theme || "light"}
+          onClose={() => setHistoryExportEntry(null)}
+        />
+      )}
+
+      {/* Room History Manager */}
+      {showRoomHistoryManager && (
+        <RoomHistoryManager
+          historyService={historyService}
+          theme={(currentAppState as any).theme || "light"}
+          onClose={() => setShowRoomHistoryManager(false)}
         />
       )}
     </div>

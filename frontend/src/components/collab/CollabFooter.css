@@ -105,9 +105,45 @@
   }
 }
 
+/* History button styles */
+.collab-history-button {
+  background: none;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-primary, #333);
+  transition: all 0.2s;
+  height: 28px;
+}
+
+.collab-history-button:hover {
+  background: var(--color-surface-high, #f0f0f0);
+  border-color: var(--color-border-hover, #999);
+}
+
+.collab-history-button.room-history-button {
+  background: var(--color-surface-medium, #f8f9fa);
+  border-color: var(--color-border-light, #dee2e6);
+}
+
 /* Dark theme support */
 [data-theme="dark"] .collab-footer-container {
   background: var(--color-surface-low);
   border-color: var(--color-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .collab-history-button {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .collab-history-button:hover {
+  background: var(--color-surface-high);
+  border-color: var(--color-border-hover);
 }

@@ -7,12 +7,18 @@ interface CollabFooterProps {
   roomId: string | null;
   currentUserId: string;
   onUsernameChange?: (newUsername: string) => void;
+  onShowHistory?: () => void;
+  onShowRoomHistory?: () => void;
+  historyCount?: number;
 }
 
 export function CollabFooter({
   roomId,
   currentUserId,
   onUsernameChange,
+  onShowHistory,
+  onShowRoomHistory,
+  historyCount = 0,
 }: CollabFooterProps) {
   const device = useDevice();
 
@@ -26,6 +32,26 @@ export function CollabFooter({
     <Footer>
       <div className="collab-footer-container">
         {roomId && <RoomDisplay roomId={roomId} />}
+        
+        {roomId && onShowHistory && (
+          <button 
+            className="collab-history-button"
+            onClick={onShowHistory}
+            title="現在のルームの変更履歴を表示"
+          >
+            📜 履歴 ({historyCount})
+          </button>
+        )}
+        
+        {onShowRoomHistory && (
+          <button 
+            className="collab-history-button room-history-button"
+            onClick={onShowRoomHistory}
+            title="過去に参加したルームの履歴を表示"
+          >
+            🗂️ 全履歴
+          </button>
+        )}
         
         {currentUserId && (
           <EditableUsername 
