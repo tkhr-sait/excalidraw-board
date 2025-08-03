@@ -19,6 +19,7 @@ import { WS_SUBTYPES } from '../../types/socket';
 import type { BinaryFiles } from '../../types/excalidraw';
 import { CollabToolbar } from './CollabToolbar';
 import { RoomDialog } from './RoomDialog';
+import { FeatureFlags } from '../../utils/feature-flags';
 import './Collab.css';
 
 // Generate deterministic encryption key from room ID so all users have the same key
@@ -56,13 +57,11 @@ interface CollabProps {
     scrollY: number;
     zoom: number;
   }) => void;
-  onImageRequest?: (fileIds: string[]) => void;
   onImageReceived?: (files: BinaryFiles) => void;
-  onCheckMissingFiles?: (fileIds: string[]) => void;
 }
 
 export interface CollabHandle {
-  broadcastSceneUpdate: (elements: any[], appState: any) => Promise<void>;
+  broadcastSceneUpdate: (elements: any[], appState: any, files?: BinaryFiles) => Promise<void>;
   broadcastPointerUpdate: (
     x: number,
     y: number,
@@ -77,8 +76,6 @@ export interface CollabHandle {
   leaveRoom: () => void;
   updateUsername: (newUsername: string) => void;
   getState: () => CollaborationState;
-  broadcastImageResponse: (files: BinaryFiles) => Promise<void>;
-  broadcastImageRequest: (fileIds: string[]) => Promise<void>;
 }
 
 export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
@@ -88,9 +85,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
     onSceneUpdate,
     onPointerUpdate,
     onViewportUpdate,
-    onImageRequest,
     onImageReceived,
-    onCheckMissingFiles,
   } = props;
   const socket = useSocket();
   const [syncPortal] = useState(() => new SyncPortal(socketService));
@@ -343,20 +338,10 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
             console.log('Sending valid elements to App:', validElementDetails);
           }
 
-          // Check for image elements that need file data
-          const imageElements = validElements.filter(
-            (el: any) => el.type === 'image' && el.fileId
-          );
-          if (imageElements.length > 0) {
-            const uniqueFileIds = [...new Set(imageElements
-              .map((el: any) => el.fileId)
-              .filter((fileId: string) => fileId))];
-            
-            // Notify parent to check if these files exist locally
-            if (uniqueFileIds.length > 0) {
-              console.log('Found image elements with fileIds:', uniqueFileIds);
-              onCheckMissingFiles?.(uniqueFileIds);
-            }
+          // Handle files if included in the payload (excalidraw-room style)
+          if (decryptedData.payload.files && FeatureFlags.isImageSharingEnabled()) {
+            console.log('Received files with scene update:', Object.keys(decryptedData.payload.files));
+            onImageReceived?.(decryptedData.payload.files);
           }
 
           // Always call onSceneUpdate to trigger reconciliation
@@ -398,18 +383,6 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
             scrollY: sceneBounds.y,
             zoom: sceneBounds.zoom || 1,
           });
-          break;
-        case WS_SUBTYPES.IMAGE_REQUEST:
-          // Handle image data request from other users
-          console.log('Image request received:', decryptedData.payload);
-          const { fileIds } = decryptedData.payload;
-          onImageRequest?.(fileIds);
-          break;
-        case WS_SUBTYPES.IMAGE_RESPONSE:
-          // Handle image data response from other users
-          console.log('Image response received:', decryptedData.payload);
-          const { files } = decryptedData.payload;
-          onImageReceived?.(files);
           break;
       }
     };
@@ -592,7 +565,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
 
   // Broadcast scene update via encrypted channel
   const broadcastSceneUpdate = useCallback(
-    async (elements: any[], appState: any) => {
+    async (elements: any[], appState: any, files?: BinaryFiles) => {
       if (!state.isInRoom || !roomKey || !state.roomId) return;
 
       // Debug: Log element dimensions before broadcasting
@@ -627,6 +600,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
         payload: {
           elements: syncableElements,
           appState,
+          ...(files && FeatureFlags.isImageSharingEnabled() && { files }),
         },
       };
 
@@ -684,41 +658,6 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
     [state.isInRoom, state.roomId, state.username, roomKey]
   ); // 100ms throttle for viewport updates
 
-  // Broadcast image response to users who requested it
-  const broadcastImageResponse = useCallback(
-    async (files: BinaryFiles) => {
-      if (!state.isInRoom || !roomKey || !state.roomId) return;
-
-      const data: SocketUpdateData = {
-        type: WS_SUBTYPES.IMAGE_RESPONSE,
-        payload: {
-          socketId: socketService.socket?.id || '',
-          files,
-        },
-      };
-
-      await socketService.broadcastEncryptedData(data, false, state.roomId);
-    },
-    [state.isInRoom, state.roomId, roomKey]
-  );
-
-  // Broadcast image request for missing files
-  const broadcastImageRequest = useCallback(
-    async (fileIds: string[]) => {
-      if (!state.isInRoom || !roomKey || !state.roomId) return;
-
-      const data: SocketUpdateData = {
-        type: WS_SUBTYPES.IMAGE_REQUEST,
-        payload: {
-          socketId: socketService.socket?.id || '',
-          fileIds,
-        },
-      };
-
-      await socketService.broadcastEncryptedData(data, false, state.roomId);
-    },
-    [state.isInRoom, state.roomId, roomKey]
-  );
 
   // ユーザー名更新処理 - Fixed with proper socket ID handling
   const handleUpdateUsername = useCallback(
@@ -786,8 +725,6 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
       leaveRoom: handleLeaveRoom,
       updateUsername: handleUpdateUsername,
       getState: () => state,
-      broadcastImageResponse,
-      broadcastImageRequest,
     }),
     [
       broadcastSceneUpdate,
@@ -797,8 +734,6 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
       handleLeaveRoom,
       handleUpdateUsername,
       state,
-      broadcastImageResponse,
-      broadcastImageRequest,
     ]
   );
 

@@ -49,6 +49,7 @@ export interface SocketUpdateDataSource {
     payload: {
       elements: readonly any[];
       appState?: any;
+      files?: any;
     };
   };
   UPDATE: {
@@ -56,6 +57,7 @@ export interface SocketUpdateDataSource {
     payload: {
       elements: readonly any[];
       appState?: any;
+      files?: any;
     };
   };
   MOUSE_LOCATION: {

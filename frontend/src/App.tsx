@@ -28,9 +28,15 @@ import { CollabMobileMenu } from './components/collab/CollabMobileMenu';
 import { RoomDialog } from './components/collab/RoomDialog';
 import { ShareDialog } from './components/collab/ShareDialog';
 import { Minimap } from './components/collab/Minimap';
+import { HistoryViewer } from './components/collab/HistoryViewer';
+import { HistoryExportDialog } from './components/collab/HistoryExportDialog';
+import { RoomHistoryManager } from './components/collab/RoomHistoryManager';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
+import { FeatureFlags } from './utils/feature-flags';
+import { CollaborationHistoryService } from './services/collaboration-history';
+import type { HistoryEntry } from './types/history';
 import './App.css';
 import './styles/excalidraw-overrides.css';
 
@@ -62,8 +68,11 @@ function App() {
     readonly ExcalidrawElement[]
   >([]);
   const [currentAppState, setCurrentAppState] = useState<Partial<AppState>>({});
-  // Pending image requests that need to be sent
-  const [pendingImageRequests, setPendingImageRequests] = useState<string[]>([]);
+  const [historyService] = useState(() => new CollaborationHistoryService());
+  const [showHistoryViewer, setShowHistoryViewer] = useState(false);
+  const [showRoomHistoryManager, setShowRoomHistoryManager] = useState(false);
+  const [historyExportEntry, setHistoryExportEntry] = useState<HistoryEntry | null>(null);
+  const [historyCount, setHistoryCount] = useState(0);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -132,21 +141,6 @@ function App() {
               username: pendingUrlJoin.username,
             });
             console.log('joinRoom called successfully for URL login');
-
-            // Set a timeout to check if collaboration started
-            setTimeout(() => {
-              if (!isCollaborating) {
-                console.warn(
-                  'URL join may have failed - collaboration not started after 2 seconds'
-                );
-                // Don't clear pendingUrlJoin yet, let user try manually
-                setIsConnecting(false);
-                setShowRoomDialog(true);
-              } else {
-                console.log('URL join successful - collaboration started');
-                setPendingUrlJoin(null); // ペンディング状態をクリア
-              }
-            }, 2000);
           }
         } catch (error) {
           console.error('Error joining room from URL:', error);
@@ -154,7 +148,6 @@ function App() {
             error instanceof Error ? error.message : 'Unknown error occurred'
           );
           setIsConnecting(false);
-          setShowRoomDialog(true); // エラー時はダイアログを表示
           setPendingUrlJoin(null);
         }
       }, 100); // Small delay to ensure components are ready
@@ -298,8 +291,23 @@ function App() {
         // 0でも更新する
         handleRemoteSceneUpdate(reconciledElements);
       }
+
+      // Save history with debounce and update count
+      if (isCollaborating && collaboration.roomKey && currentUsername) {
+        historyService.saveHistoryEntry(
+          collaboration.roomKey,
+          currentUsername,
+          [...reconciledElements] as ExcalidrawElement[],
+          data.appState,
+          excalidrawAPIRef.current?.getFiles(),
+          false,
+          currentRoomId || undefined
+        );
+        const history = historyService.getHistory(collaboration.roomKey);
+        setHistoryCount(history.entries.length);
+      }
     },
-    [_reconcileElements, handleRemoteSceneUpdate]
+    [_reconcileElements, handleRemoteSceneUpdate, isCollaborating, collaboration.roomKey, currentUsername, currentRoomId, historyService]
   );
 
   // Collab コンポーネントからのビューポート更新受信
@@ -424,13 +432,19 @@ function App() {
           elementsIncludingDeleted.length,
           'elements (including recently deleted)'
         );
+        // Get files if image sharing is enabled
+        const files = FeatureFlags.isImageSharingEnabled() 
+          ? excalidrawAPIRef.current.getFiles() 
+          : {};
+        
         // Force sync all elements including recently deleted ones
         collaboration.broadcastScene(
           elementsIncludingDeleted.map((el) => ({
             ...el,
             version: el.version || 1,
           })),
-          true
+          true,
+          files
         );
       }
     };
@@ -467,6 +481,21 @@ function App() {
         recentlyDeletedTracker.current.cleanup();
       }
 
+      // Save history with debounce and update count
+      if (isCollaborating && collaboration.roomKey && currentUsername) {
+        historyService.saveHistoryEntry(
+          collaboration.roomKey,
+          currentUsername,
+          elements,
+          appState,
+          files,
+          false,
+          currentRoomId || undefined
+        );
+        const history = historyService.getHistory(collaboration.roomKey);
+        setHistoryCount(history.entries.length);
+      }
+
       // 公式方式: コラボレーション同期（削除された要素も含む）
       if (
         isCollaborating &&
@@ -483,11 +512,16 @@ function App() {
           currentElements: elements.length,
           recentlyDeleted: elementsForSync.length - elements.length,
         });
+        
+        // Include files in sync if image sharing is enabled
+        const filesToSync = FeatureFlags.isImageSharingEnabled() ? files : {};
+        
         collaboration.syncElements(
           elementsForSync.map((el) => ({
             ...el,
             version: el.version || 1,
-          }))
+          })),
+          filesToSync
         );
       }
 
@@ -496,7 +530,7 @@ function App() {
         saveToLocalStorage({ elements, appState, files });
       }
     },
-    [isCollaborating, collaboration]
+    [isCollaborating, collaboration, currentUsername, currentRoomId, historyService]
   );
 
   // Excalidrawコンポーネントがマウントされたとき
@@ -643,19 +677,31 @@ function App() {
         setCurrentRoomId(roomId || null);
         setCurrentUsername(username || null);
         console.log('Set room and username:', { roomId, username });
+        // Clear pending URL join state on successful collaboration start
+        setPendingUrlJoin(null);
+        console.log('Cleared pending URL join - collaboration started successfully');
         // Close dialog and reset states on successful connection
         setShowRoomDialog(false);
         setIsConnecting(false);
         setRoomDialogError(null);
+        
+        // Initialize history for this room
+        const history = historyService.getHistory(roomKey);
+        setHistoryCount(history.entries.length);
       } else if (!collaborating) {
         // Stop collaboration
         collaboration.stopCollaboration();
         setCurrentRoomId(null);
         setCurrentUsername(null);
         setIsConnecting(false);
+        
+        // Stop debounced saving for this room
+        if (roomKey) {
+          historyService.stopHistorySaving(roomKey);
+        }
       }
     },
-    [collaboration]
+    [collaboration, historyService, currentUsername]
   );
 
   // コラボレーター変更のハンドラ - Excalidraw本体機能を使用
@@ -755,7 +801,41 @@ function App() {
   // ルーム参加処理
   const handleJoinRoom = useCallback(
     (data: { roomId: string; username: string }) => {
-      if (collabRef.current) {
+      if (collabRef.current && excalidrawAPIRef.current) {
+        // すでに共有中かチェック
+        if (isCollaborating && currentRoomId) {
+          const confirmSwitch = window.confirm(
+            `現在ルーム「${currentRoomId}」で共有中です。\n新しいルーム「${data.roomId}」に切り替えますか？\n\n注意：現在の共有は終了し、キャンバスの内容は削除されます。`
+          );
+          
+          if (!confirmSwitch) {
+            setIsConnecting(false);
+            return;
+          }
+          
+          // 現在のルームから退出
+          collabRef.current.leaveRoom();
+        } else {
+          // 共有中でない場合、キャンバスに要素があるかチェック
+          const elements = excalidrawAPIRef.current.getSceneElements();
+          if (elements && elements.length > 0) {
+            const confirmed = window.confirm(
+              'キャンバスに描画内容があります。コラボレーションに参加すると、現在の内容は削除されます。続行しますか？'
+            );
+            
+            if (!confirmed) {
+              setIsConnecting(false);
+              return; // キャンセルされた場合は参加処理を中止
+            }
+          }
+        }
+        
+        // キャンバスをクリア
+        excalidrawAPIRef.current.updateScene({
+          elements: [],
+          appState: {},
+        });
+        
         setIsConnecting(true);
         setRoomDialogError(null);
         try {
@@ -773,7 +853,7 @@ function App() {
       setShowShareDialog(false);
       setIsConnecting(false);
     },
-    []
+    [isCollaborating, currentRoomId]
   );
 
   // ルーム退出処理
@@ -814,95 +894,31 @@ function App() {
     []
   );
 
-  // Handle image request from remote users
-  const handleImageRequest = useCallback(
-    async (fileIds: string[]) => {
-      if (!excalidrawAPIRef.current || !collabRef.current) return;
-
-      try {
-        // Get all files from Excalidraw
-        const files = excalidrawAPIRef.current.getFiles();
-        const filesToSend: BinaryFiles = {};
-
-        // Filter files that were requested
-        for (const fileId of fileIds) {
-          if (files[fileId]) {
-            filesToSend[fileId] = files[fileId];
-          }
-        }
-
-        // Send files to remote users if we have any
-        if (Object.keys(filesToSend).length > 0) {
-          console.log('Sending image files to remote users:', Object.keys(filesToSend));
-          await collabRef.current.broadcastImageResponse(filesToSend);
-        }
-      } catch (error) {
-        console.error('Error handling image request:', error);
-      }
-    },
-    []
-  );
 
   // Handle received image files from remote users
-  const handleImageReceived = useCallback(
-    (files: BinaryFiles) => {
-      if (!excalidrawAPIRef.current) return;
-
-      try {
-        console.log('Received image files from remote users:', Object.keys(files));
-        
-        // Add files to Excalidraw
-        excalidrawAPIRef.current.addFiles(files);
-        
-        // Clear pending requests for these files
-        setPendingImageRequests((prev) => 
-          prev.filter((fileId) => !files[fileId])
-        );
-      } catch (error) {
-        console.error('Error handling received images:', error);
-      }
-    },
-    []
-  );
-
-  // Check which files are missing locally and add to pending requests
-  const handleCheckMissingFiles = useCallback(
-    (fileIds: string[]) => {
-      if (!excalidrawAPIRef.current) return;
-
-      try {
-        const files = excalidrawAPIRef.current.getFiles();
-        const missingFileIds = fileIds.filter((fileId) => !files[fileId]);
-        
-        if (missingFileIds.length > 0) {
-          console.log('Missing image files detected:', missingFileIds);
-          setPendingImageRequests((prev) => {
-            const newRequests = [...new Set([...prev, ...missingFileIds])];
-            return newRequests;
-          });
-        }
-      } catch (error) {
-        console.error('Error checking missing files:', error);
-      }
-    },
-    []
-  );
-
-  // Request missing image files when detected
-  useEffect(() => {
-    if (pendingImageRequests.length > 0 && collabRef.current && isCollaborating) {
-      const requestImageFiles = async () => {
-        try {
-          await collabRef.current!.broadcastImageRequest(pendingImageRequests);
-          console.log('Requested missing image files:', pendingImageRequests);
-        } catch (error) {
-          console.error('Error requesting image files:', error);
-        }
-      };
-
-      requestImageFiles();
+  const handleImageReceived = useCallback((files: BinaryFiles) => {
+    // Skip image handling if feature is disabled
+    if (!FeatureFlags.isImageSharingEnabled()) {
+      console.log('Image sharing is disabled by feature flag');
+      return;
     }
-  }, [pendingImageRequests, isCollaborating]);
+
+    if (!excalidrawAPIRef.current) return;
+
+    try {
+      console.log(
+        'Received image files from remote users:',
+        Object.keys(files)
+      );
+
+      // Add files to Excalidraw
+      excalidrawAPIRef.current.addFiles(files);
+
+    } catch (error) {
+      console.error('Error handling received images:', error);
+    }
+  }, []);
+
 
   return (
     <div className="app">
@@ -915,9 +931,7 @@ function App() {
           onSceneUpdate={handleCollabSceneUpdate}
           onPointerUpdate={handleCollabPointerUpdate}
           onViewportUpdate={handleCollabViewportUpdate}
-          onImageRequest={handleImageRequest}
           onImageReceived={handleImageReceived}
-          onCheckMissingFiles={handleCheckMissingFiles}
         />
       </div>
 
@@ -929,7 +943,7 @@ function App() {
           onPointerUpdate={handlePointerUpdate}
           onScrollChange={handleScrollChange}
           langCode="ja"
-          theme="light"
+          theme={(currentAppState as any).theme || "light"}
           name="Excalidraw Board"
           UIOptions={{
             canvasActions: {
@@ -994,6 +1008,9 @@ function App() {
               roomId={currentRoomId}
               currentUserId={currentUsername || ''}
               onUsernameChange={handleUsernameChange}
+              onShowHistory={() => setShowHistoryViewer(true)}
+              onShowRoomHistory={() => setShowRoomHistoryManager(true)}
+              historyCount={historyCount}
             />
           )}
         </Excalidraw>
@@ -1049,6 +1066,40 @@ function App() {
           currentRoomId={currentRoomId}
           currentUsername={currentUsername}
           collaborators={collaborators}
+        />
+      )}
+
+      {/* History Viewer */}
+      {showHistoryViewer && collaboration.roomKey && (
+        <HistoryViewer
+          roomId={collaboration.roomKey}
+          historyService={historyService}
+          theme={(currentAppState as any).theme || "light"}
+          onClose={() => setShowHistoryViewer(false)}
+          onExport={(entry) => {
+            setHistoryExportEntry(entry);
+            setShowHistoryViewer(false);
+          }}
+        />
+      )}
+
+      {/* History Export Dialog */}
+      {historyExportEntry && collaboration.roomKey && (
+        <HistoryExportDialog
+          roomId={collaboration.roomKey}
+          historyService={historyService}
+          entry={historyExportEntry}
+          theme={(currentAppState as any).theme || "light"}
+          onClose={() => setHistoryExportEntry(null)}
+        />
+      )}
+
+      {/* Room History Manager */}
+      {showRoomHistoryManager && (
+        <RoomHistoryManager
+          historyService={historyService}
+          theme={(currentAppState as any).theme || "light"}
+          onClose={() => setShowRoomHistoryManager(false)}
         />
       )}
     </div>

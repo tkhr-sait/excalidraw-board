@@ -10,6 +10,9 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest"
+    },
+    "python": {
+      "version": "3.12.3"
     }
   },
   "customizations": {
@@ -50,5 +53,5 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": ""
+  "postCreateCommand": "pip install uv"
 }
