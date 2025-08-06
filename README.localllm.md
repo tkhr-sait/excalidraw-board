@@ -21,8 +21,43 @@ litellm --config .litellm/config.yaml
 
 ## 2. claude 起動時に BASE_URL 変更し、model を指定
 
+- tool 呼び出し:x:
+
 ```bash
 export ANTHROPIC_BASE_URL="http://0.0.0.0:4000"
 export ANTHROPIC_AUTH_TOKEN="dummy"
 claude --model openai/qwen3-coder-30b-a3b-instruct
+```
+
+- tool 呼び出し:x:
+
+```bash
+export ANTHROPIC_BASE_URL="http://0.0.0.0:4000"
+export ANTHROPIC_AUTH_TOKEN="dummy"
+claude --model gpt-oss-120b
+```
+
+# codex で
+
+```
+cat << __EOF__ > ~/.codex/config.toml
+disable_response_storage = false
+
+profile = "gpt-oss-120b"
+
+[model_providers.lmstudio]
+name = "LMStudio"
+base_url = "http://host.docker.internal:1234/v1"
+wire_api = "chat"
+env_key = "OPENAI_API_KEY"
+
+[profiles.gpt-oss-120b]
+model_provider = "lmstudio"
+model = "openai/gpt-oss-120b"
+model_context_window = 131072
+model_supports_reasoning_summaries = true
+model_reasoning_effort = "medium"
+__EOF__
+
+OPEN_API_KEY=dummy codex -p gpt-oss-120b
 ```
