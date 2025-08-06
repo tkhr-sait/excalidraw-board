@@ -986,6 +986,27 @@ function App() {
             <MainMenu.Separator />
             <MainMenu.DefaultItems.ToggleTheme />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
+            <MainMenu.Separator />
+            
+            {/* Room history management - always accessible */}
+            <MainMenu.ItemCustom>
+              <button 
+                className="menu-item"
+                onClick={() => setShowRoomHistoryManager(true)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 'inherit',
+                  color: 'inherit',
+                }}
+              >
+                🗂️ 履歴管理
+              </button>
+            </MainMenu.ItemCustom>
 
             {/* Mobile collaboration menu - only rendered on mobile devices */}
             <CollabMobileMenu
@@ -1009,7 +1030,6 @@ function App() {
               currentUserId={currentUsername || ''}
               onUsernameChange={handleUsernameChange}
               onShowHistory={() => setShowHistoryViewer(true)}
-              onShowRoomHistory={() => setShowRoomHistoryManager(true)}
               historyCount={historyCount}
             />
           )}
