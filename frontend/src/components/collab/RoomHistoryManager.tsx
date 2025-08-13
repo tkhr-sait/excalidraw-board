@@ -9,6 +9,7 @@ interface RoomHistoryManagerProps {
   historyService: CollaborationHistoryService;
   theme?: 'light' | 'dark';
   onClose: () => void;
+  onRestore?: (entry: HistoryEntry) => void;
 }
 
 interface RoomSummary {
@@ -23,6 +24,7 @@ export function RoomHistoryManager({
   historyService,
   theme = 'light',
   onClose,
+  onRestore,
 }: RoomHistoryManagerProps) {
   const [roomSummaries, setRoomSummaries] = useState<RoomSummary[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -185,6 +187,7 @@ export function RoomHistoryManager({
             setSelectedRoomId(null);
           }}
           onExport={handleExport}
+          onRestore={onRestore}
         />
       )}
 
