@@ -36,12 +36,13 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__ide__getDiagnostics",
       "Bash(rg:*)",
-      "WebFetch(domain:docs.excalidraw.com)"
+      "WebFetch(domain:docs.excalidraw.com)",
+      "Bash(sed -n '190,205p' frontend/src/components/collab/HistoryViewer.tsx)"
     ],
     "deny": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "context7"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
