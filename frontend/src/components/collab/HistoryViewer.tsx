@@ -9,6 +9,7 @@ interface HistoryViewerProps {
   theme?: 'light' | 'dark';
   onClose: () => void;
   onExport: (entry: HistoryEntry) => void;
+  onRestore?: (entry: HistoryEntry) => void;
 }
 
 export function HistoryViewer({
@@ -17,10 +18,11 @@ export function HistoryViewer({
   theme = 'light',
   onClose,
   onExport,
+  onRestore,
 }: HistoryViewerProps) {
   const [history, setHistory] = useState<CollaborationHistory | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
-  const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
+  const [expandedThumbnails, setExpandedThumbnails] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [filterUser, setFilterUser] = useState<string>('all');
 
@@ -103,10 +105,31 @@ export function HistoryViewer({
   };
 
 
+  // Toggle thumbnail expansion
+  const toggleThumbnailExpansion = useCallback((entryId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedThumbnails(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
+  }, []);
+
   // Export single entry
   const handleExportEntry = useCallback((entry: HistoryEntry) => {
     onExport(entry);
   }, [onExport]);
+
+  // Restore entry to canvas
+  const handleRestoreEntry = useCallback((entry: HistoryEntry) => {
+    if (onRestore) {
+      onRestore(entry);
+    }
+  }, [onRestore]);
 
 
   if (!history || history.entries.length === 0) {
@@ -163,8 +186,6 @@ export function HistoryViewer({
             key={entry.id}
             className={`history-entry ${selectedEntry?.id === entry.id ? 'selected' : ''}`}
             onClick={() => setSelectedEntry(entry)}
-            onMouseEnter={() => setPreviewEntry(entry)}
-            onMouseLeave={() => setPreviewEntry(null)}
           >
             <div className="history-entry-header">
               <span className="history-entry-time">
@@ -182,7 +203,10 @@ export function HistoryViewer({
                 {entry.elementCount} 要素
               </span>
               {entry.thumbnail && (
-                <div className="history-entry-thumbnail">
+                <div 
+                  className={`history-entry-thumbnail ${expandedThumbnails.has(entry.id) ? 'expanded' : ''}`}
+                  onClick={(e) => toggleThumbnailExpansion(entry.id, e)}
+                >
                   <img src={entry.thumbnail} alt="Preview" />
                 </div>
               )}
@@ -190,6 +214,17 @@ export function HistoryViewer({
             
             {selectedEntry?.id === entry.id && (
               <div className="history-entry-actions">
+                {onRestore && (
+                  <button
+                    className="history-action-button restore"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRestoreEntry(entry);
+                    }}
+                  >
+                    復元
+                  </button>
+                )}
                 <button
                   className="history-action-button export"
                   onClick={(e) => {
@@ -204,17 +239,6 @@ export function HistoryViewer({
           </div>
         ))}
       </div>
-      
-      {previewEntry && previewEntry.thumbnail && (
-        <div className="history-preview-tooltip">
-          <img src={previewEntry.thumbnail} alt="Large preview" />
-          <div className="history-preview-info">
-            <p>{formatTimestamp(previewEntry.timestamp)}</p>
-            <p>{previewEntry.username}</p>
-            <p>{previewEntry.elementCount} 要素</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

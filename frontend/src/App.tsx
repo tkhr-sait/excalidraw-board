@@ -894,6 +894,54 @@ function App() {
     []
   );
 
+  // Handle restore from history
+  const handleRestoreFromHistory = useCallback(
+    async (entry: HistoryEntry) => {
+      // Confirm dialog
+      const message = isCollaborating
+        ? '現在のキャンバスが履歴の状態で上書きされます。\n共有中のため、全参加者のキャンバスも更新されます。\n続行しますか？'
+        : '現在のキャンバスが履歴の状態で上書きされます。\n続行しますか？';
+
+      if (!window.confirm(message)) {
+        return;
+      }
+
+      // Restore to local canvas
+      if (excalidrawAPIRef.current) {
+        const currentAppState = excalidrawAPIRef.current.getAppState();
+        
+        // Filter out properties that shouldn't be restored
+        const { collaborators, ...restAppState } = entry.appState || {};
+        
+        excalidrawAPIRef.current.updateScene({
+          elements: entry.elements,
+          appState: {
+            // Restore app state without collaborators
+            ...restAppState,
+            // Keep current user's viewport and collaboration state
+            scrollX: currentAppState.scrollX,
+            scrollY: currentAppState.scrollY,
+            zoom: currentAppState.zoom,
+            collaborators: currentAppState.collaborators, // Keep current collaborators
+          },
+        });
+
+        // Broadcast to all participants if collaborating
+        if (isCollaborating && collabRef.current) {
+          await collabRef.current.broadcastSceneUpdate(
+            entry.elements,
+            entry.appState,
+            {} // No files for now
+          );
+        }
+      }
+
+      // Close history viewer
+      setShowHistoryViewer(false);
+    },
+    [isCollaborating]
+  );
+
 
   // Handle received image files from remote users
   const handleImageReceived = useCallback((files: BinaryFiles) => {
@@ -1100,6 +1148,7 @@ function App() {
             setHistoryExportEntry(entry);
             setShowHistoryViewer(false);
           }}
+          onRestore={handleRestoreFromHistory}
         />
       )}
 
@@ -1120,6 +1169,7 @@ function App() {
           historyService={historyService}
           theme={(currentAppState as any).theme || "light"}
           onClose={() => setShowRoomHistoryManager(false)}
+          onRestore={handleRestoreFromHistory}
         />
       )}
     </div>
