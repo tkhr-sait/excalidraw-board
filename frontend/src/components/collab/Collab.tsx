@@ -43,7 +43,7 @@ interface CollabProps {
     username?: string
   ) => void;
   onCollaboratorsChange?: (collaborators: RoomUser[]) => void;
-  onSceneUpdate?: (data: { elements: any[]; appState: any }) => void;
+  onSceneUpdate?: (data: { elements: any[]; appState: any; replaceAll?: boolean }) => void;
   onPointerUpdate?: (data: {
     userId: string;
     x: number;
@@ -61,7 +61,7 @@ interface CollabProps {
 }
 
 export interface CollabHandle {
-  broadcastSceneUpdate: (elements: any[], appState: any, files?: BinaryFiles) => Promise<void>;
+  broadcastSceneUpdate: (elements: any[], appState: any, files?: BinaryFiles, replaceAll?: boolean) => Promise<void>;
   broadcastPointerUpdate: (
     x: number,
     y: number,
@@ -351,6 +351,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
               collaborators: new Map(),
               ...decryptedData.payload.appState,
             },
+            replaceAll: 'replaceAll' in decryptedData.payload ? decryptedData.payload.replaceAll : false, // Pass through the replaceAll flag
           });
           break;
         case WS_SUBTYPES.MOUSE_LOCATION:
@@ -565,7 +566,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
 
   // Broadcast scene update via encrypted channel
   const broadcastSceneUpdate = useCallback(
-    async (elements: any[], appState: any, files?: BinaryFiles) => {
+    async (elements: any[], appState: any, files?: BinaryFiles, replaceAll: boolean = false) => {
       if (!state.isInRoom || !roomKey || !state.roomId) return;
 
       // Debug: Log element dimensions before broadcasting
@@ -601,6 +602,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
           elements: syncableElements,
           appState,
           ...(files && FeatureFlags.isImageSharingEnabled() && { files }),
+          replaceAll, // Add the replaceAll flag
         },
       };
 

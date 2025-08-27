@@ -8,7 +8,7 @@ export interface CollaborationAPI {
   
   // シーン同期 - 公式と同じAPI
   syncElements: (elements: readonly SyncableElement[], files?: any) => void;
-  broadcastScene: (elements: readonly SyncableElement[], syncAll?: boolean, files?: any) => void;
+  broadcastScene: (elements: readonly SyncableElement[], syncAll?: boolean, files?: any, replaceAll?: boolean) => void;
   broadcastSceneUpdate: (elements: readonly SyncableElement[], files?: any) => void;
   
   // マウス・ユーザー操作
@@ -91,7 +91,8 @@ export function useCollaboration(): CollaborationAPI {
   const broadcastScene = useCallback((
     elements: readonly SyncableElement[], 
     syncAll: boolean = false,
-    files?: any
+    files?: any,
+    replaceAll: boolean = false
   ) => {
     if (!isCollaborating) return;
     
@@ -99,7 +100,8 @@ export function useCollaboration(): CollaborationAPI {
       syncAll ? WS_SUBTYPES.INIT : WS_SUBTYPES.UPDATE,
       elements,
       syncAll,
-      files
+      files,
+      replaceAll
     );
     
     const currentVersion = Math.max(...elements.map(el => el.version || 0), 0);

@@ -58,6 +58,7 @@ export interface SocketUpdateDataSource {
       elements: readonly any[];
       appState?: any;
       files?: any;
+      replaceAll?: boolean; // When true, replace all elements instead of reconciling
     };
   };
   MOUSE_LOCATION: {
