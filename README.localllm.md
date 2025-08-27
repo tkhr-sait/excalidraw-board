@@ -39,7 +39,7 @@ export ANTHROPIC_SMALL_FAST_MODEL=${ANTHROPIC_MODEL}
 claude --model ${ANTHROPIC_MODEL}
 ```
 
-- youtube で、kimi-k2 を claude code経由で動かせてたけど、gpt-ossちと無理ぽい
+- youtube で、kimi-k2 を claude code 経由で動かせてたけど、gpt-oss ちと無理ぽい
 
 # codex で
 
@@ -51,7 +51,7 @@ npm i -g @openai/codex
 cat << __EOF__ > ~/.codex/config.toml
 disable_response_storage = false
 
-profile = "openai.gpt-oss-120b"
+profile = "openai_gpt-oss-120b"
 
 [model_providers.lmstudio]
 name = "LMStudio"
@@ -145,10 +145,11 @@ export OPENAI_MODEL="openai/gpt-oss-120b"
 | model / tool              | claude code | :x: codex             | opencode                     | qwen code                    | メモ                             |
 | ------------------------- | ----------- | --------------------- | ---------------------------- | ---------------------------- | -------------------------------- |
 | **qwen3-coder**           | :x:         | :warning: 不要 backup | :o:                          | :o:                          |                                  |
-| **gpt-oss-120b(openai)**  | :x:         | :x: 更新なし           | :o:                          | :warning: 生成コードいまいち | 途中で中断                       |
+| **gpt-oss-120b(openai)**  | :x:         | :x: 更新なし          | :o:                          | :warning: 生成コードいまいち | 途中で中断                       |
 | **gpt-oss-120b(unsloth)** | :x:         | :o:                   | :warning: 生成コードいまいち | :x: 更新なし                 | 変なタグ生成して中断することあり |
 
 - prompt
+
   ```
   Reasoning_effort: Low.
 

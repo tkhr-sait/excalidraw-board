@@ -73,6 +73,7 @@ function App() {
   const [showRoomHistoryManager, setShowRoomHistoryManager] = useState(false);
   const [historyExportEntry, setHistoryExportEntry] = useState<HistoryEntry | null>(null);
   const [historyCount, setHistoryCount] = useState(0);
+  const [isWaitingForInitialSync, setIsWaitingForInitialSync] = useState(false);
 
   // Excalidraw APIの参照を保持
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -278,18 +279,39 @@ function App() {
 
   // Collab コンポーネントからの同期データ受信（公式方式採用）
   const handleCollabSceneUpdate = useCallback(
-    (data: { elements: any[]; appState: any }) => {
+    (data: { elements: any[]; appState: any; replaceAll?: boolean }) => {
       console.log(
         'Received scene update from Collab:',
         data.elements.length,
-        'elements'
+        'elements',
+        data.replaceAll ? '(REPLACE ALL)' : ''
       );
 
-      // 公式方式: reconcile → handleRemoteSceneUpdate の順序
-      const reconciledElements = _reconcileElements(data.elements);
-      if (reconciledElements.length >= 0) {
-        // 0でも更新する
-        handleRemoteSceneUpdate(reconciledElements);
+      let finalElements: any[];
+      
+      if (data.replaceAll || isWaitingForInitialSync) {
+        // For replaceAll (e.g., history restore) or initial sync for new room joiners
+        console.log(
+          data.replaceAll 
+            ? 'Direct replacement mode - skipping reconciliation' 
+            : 'Initial sync mode - skipping reconciliation for new room joiner'
+        );
+        finalElements = data.elements;
+        handleRemoteSceneUpdate(finalElements);
+        
+        // Clear the initial sync flag after first data reception
+        if (isWaitingForInitialSync) {
+          setIsWaitingForInitialSync(false);
+          console.log('Initial sync completed, cleared waiting flag');
+        }
+      } else {
+        // 公式方式: reconcile → handleRemoteSceneUpdate の順序
+        const reconciledElements = _reconcileElements(data.elements);
+        finalElements = reconciledElements;
+        if (reconciledElements.length >= 0) {
+          // 0でも更新する
+          handleRemoteSceneUpdate(reconciledElements);
+        }
       }
 
       // Save history with debounce and update count
@@ -297,7 +319,7 @@ function App() {
         historyService.saveHistoryEntry(
           collaboration.roomKey,
           currentUsername,
-          [...reconciledElements] as ExcalidrawElement[],
+          [...finalElements] as ExcalidrawElement[],
           data.appState,
           excalidrawAPIRef.current?.getFiles(),
           false,
@@ -307,7 +329,7 @@ function App() {
         setHistoryCount(history.entries.length);
       }
     },
-    [_reconcileElements, handleRemoteSceneUpdate, isCollaborating, collaboration.roomKey, currentUsername, currentRoomId, historyService]
+    [_reconcileElements, handleRemoteSceneUpdate, isCollaborating, collaboration.roomKey, currentUsername, currentRoomId, historyService, isWaitingForInitialSync]
   );
 
   // Collab コンポーネントからのビューポート更新受信
@@ -345,76 +367,98 @@ function App() {
     []
   );
 
+  // Create throttled pointer update handler with cleanup
+  const throttledPointerUpdateRef = useRef<ReturnType<typeof throttle> | null>(null);
+  
   const handleCollabPointerUpdate = useCallback(
-    throttle(
-      (data: {
-        userId: string;
-        x: number;
-        y: number;
-        username?: string;
-        selectedElementIds?: readonly string[];
-      }) => {
-        // Update cursor data for minimap
-        setCursorData((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(data.userId, {
+    (data: {
+      userId: string;
+      x: number;
+      y: number;
+      username?: string;
+      selectedElementIds?: readonly string[];
+    }) => {
+      // Update cursor data for minimap
+      setCursorData((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(data.userId, {
+          x: data.x,
+          y: data.y,
+          username: data.username,
+        });
+        return newMap;
+      });
+
+      // Update Excalidraw collaborators with pointer using official API
+      if (excalidrawAPIRef.current) {
+        // Get current collaborators map from Excalidraw
+        const currentAppState = excalidrawAPIRef.current.getAppState();
+        const collaboratorsMap = new Map(
+          currentAppState.collaborators || new Map()
+        );
+
+        // Find collaborator info from our state
+        const collaborator = collaborators.find((c) => c.id === data.userId);
+        const username =
+          data.username ||
+          collaborator?.username ||
+          `User ${data.userId.slice(0, 6)}`;
+        const color =
+          collaborator?.color ||
+          `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+
+        // Get existing collaborator to preserve any other properties
+        const existingCollaborator = collaboratorsMap.get(data.userId) || {};
+
+        // Update collaborator with new pointer information
+        collaboratorsMap.set(data.userId, {
+          ...existingCollaborator, // Preserve existing properties
+          username: username,
+          avatarUrl: existingCollaborator.avatarUrl || null,
+          color: existingCollaborator.color || {
+            background: color,
+            stroke: color,
+          },
+          pointer: {
             x: data.x,
             y: data.y,
-            username: data.username,
-          });
-          return newMap;
+          },
+          selectedElementIds: data.selectedElementIds || [],
+          socketId: existingCollaborator.socketId || data.userId, // Preserve or set socketId
         });
 
-        // Update Excalidraw collaborators with pointer using official API
-        if (excalidrawAPIRef.current) {
-          // Get current collaborators map from Excalidraw
-          const currentAppState = excalidrawAPIRef.current.getAppState();
-          const collaboratorsMap = new Map(
-            currentAppState.collaborators || new Map()
-          );
-
-          // Find collaborator info from our state
-          const collaborator = collaborators.find((c) => c.id === data.userId);
-          const username =
-            data.username ||
-            collaborator?.username ||
-            `User ${data.userId.slice(0, 6)}`;
-          const color =
-            collaborator?.color ||
-            `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-
-          // Get existing collaborator to preserve any other properties
-          const existingCollaborator = collaboratorsMap.get(data.userId) || {};
-
-          // Update collaborator with new pointer information
-          collaboratorsMap.set(data.userId, {
-            ...existingCollaborator, // Preserve existing properties
-            username: username,
-            avatarUrl: existingCollaborator.avatarUrl || null,
-            color: existingCollaborator.color || {
-              background: color,
-              stroke: color,
-            },
-            pointer: {
-              x: data.x,
-              y: data.y,
-            },
-            selectedElementIds: data.selectedElementIds || [],
-            socketId: existingCollaborator.socketId || data.userId, // Preserve or set socketId
-          });
-
-          // Use Excalidraw's official updateScene method for collaborator pointers
-          excalidrawAPIRef.current.updateScene({
-            appState: {
-              collaborators: collaboratorsMap,
-            },
-          });
-        }
-      },
-      16
-    ),
+        // Use Excalidraw's official updateScene method for collaborator pointers
+        excalidrawAPIRef.current.updateScene({
+          appState: {
+            collaborators: collaboratorsMap,
+          },
+        });
+      }
+    },
     [collaborators]
-  ); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
+  );
+  
+  // Create throttled version once and store in ref
+  useEffect(() => {
+    throttledPointerUpdateRef.current = throttle(handleCollabPointerUpdate, 16); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
+    
+    return () => {
+      // Cleanup: cancel throttled function on unmount
+      if (throttledPointerUpdateRef.current) {
+        throttledPointerUpdateRef.current.cancel();
+      }
+    };
+  }, [handleCollabPointerUpdate]);
+  
+  // Use throttled version in callbacks
+  const handleCollabPointerUpdateThrottled = useCallback(
+    (data: Parameters<typeof handleCollabPointerUpdate>[0]) => {
+      if (throttledPointerUpdateRef.current) {
+        throttledPointerUpdateRef.current(data);
+      }
+    },
+    []
+  );
 
   // 公式方式: リモート更新による複雑なフラグ管理は不要
 
@@ -437,14 +481,15 @@ function App() {
           ? excalidrawAPIRef.current.getFiles() 
           : {};
         
-        // Force sync all elements including recently deleted ones
+        // Force sync all elements including recently deleted ones for initial sync
         collaboration.broadcastScene(
           elementsIncludingDeleted.map((el) => ({
             ...el,
             version: el.version || 1,
           })),
-          true,
-          files
+          true, // Force broadcast
+          files,
+          true // Mark as replaceAll for initial sync to new users
         );
       }
     };
@@ -604,9 +649,11 @@ function App() {
     collabRef.current,
   ]);
 
-  // スクロール変更のハンドラ - ビューポート情報を送信
+  // Create throttled scroll handler with cleanup
+  const throttledScrollChangeRef = useRef<ReturnType<typeof throttle> | null>(null);
+  
   const handleScrollChange = useCallback(
-    throttle((scrollX: number, scrollY: number) => {
+    (scrollX: number, scrollY: number) => {
       if (isCollaborating && collabRef.current && excalidrawAPIRef.current) {
         const appState = excalidrawAPIRef.current.getAppState();
         const zoom = appState.zoom || 1;
@@ -614,8 +661,30 @@ function App() {
         // Broadcast viewport update
         collabRef.current.broadcastViewportUpdate(scrollX, scrollY, zoom);
       }
-    }, 100), // 100ms throttle
+    },
     [isCollaborating]
+  );
+  
+  // Create throttled version once and store in ref
+  useEffect(() => {
+    throttledScrollChangeRef.current = throttle(handleScrollChange, 100); // 100ms throttle
+    
+    return () => {
+      // Cleanup: cancel throttled function on unmount
+      if (throttledScrollChangeRef.current) {
+        throttledScrollChangeRef.current.cancel();
+      }
+    };
+  }, [handleScrollChange]);
+  
+  // Use throttled version in callbacks
+  const handleScrollChangeThrottled = useCallback(
+    (scrollX: number, scrollY: number) => {
+      if (throttledScrollChangeRef.current) {
+        throttledScrollChangeRef.current(scrollX, scrollY);
+      }
+    },
+    []
   );
 
   // ポインター更新のハンドラ (Excalidraw style)
@@ -694,6 +763,7 @@ function App() {
         setCurrentRoomId(null);
         setCurrentUsername(null);
         setIsConnecting(false);
+        setIsWaitingForInitialSync(false); // Clear initial sync flag
         
         // Stop debounced saving for this room
         if (roomKey) {
@@ -836,6 +906,9 @@ function App() {
           appState: {},
         });
         
+        // Set flag to wait for initial sync from existing users
+        setIsWaitingForInitialSync(true);
+        
         setIsConnecting(true);
         setRoomDialogError(null);
         try {
@@ -926,12 +999,13 @@ function App() {
           },
         });
 
-        // Broadcast to all participants if collaborating
+        // Broadcast to all participants if collaborating with replaceAll flag
         if (isCollaborating && collabRef.current) {
           await collabRef.current.broadcastSceneUpdate(
             entry.elements,
             entry.appState,
-            {} // No files for now
+            {}, // No files for now
+            true // replaceAll = true for history restore
           );
         }
       }
@@ -977,7 +1051,7 @@ function App() {
           onCollaborationStateChange={handleCollaborationStateChange}
           onCollaboratorsChange={handleCollaboratorsChange}
           onSceneUpdate={handleCollabSceneUpdate}
-          onPointerUpdate={handleCollabPointerUpdate}
+          onPointerUpdate={handleCollabPointerUpdateThrottled}
           onViewportUpdate={handleCollabViewportUpdate}
           onImageReceived={handleImageReceived}
         />
@@ -989,7 +1063,7 @@ function App() {
           onChange={handleChange}
           excalidrawAPI={handleExcalidrawMount}
           onPointerUpdate={handlePointerUpdate}
-          onScrollChange={handleScrollChange}
+          onScrollChange={handleScrollChangeThrottled}
           langCode="ja"
           theme={(currentAppState as any).theme || "light"}
           name="Excalidraw Board"
