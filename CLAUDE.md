@@ -1,0 +1,5 @@
+- 回答は日本語。
+- 動作確認は docker を利用する。/workspace/docker/docker-compose.yml で起動可能。
+- 修正完了後
+  - playwright(headless)を利用して動作検証し、問題が起きた場合ブラウザのスクリーンショットとコンソールも確認する。
+  - docker build を行い、ビルド可能であることを確認する。

@@ -38,7 +38,8 @@
       "Bash(rg:*)",
       "WebFetch(domain:docs.excalidraw.com)",
       "Bash(sed -n '190,205p' frontend/src/components/collab/HistoryViewer.tsx)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(xargs:*)"
     ],
     "deny": []
   },

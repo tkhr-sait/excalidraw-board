@@ -316,20 +316,20 @@ export class SocketService {
     // Stop any existing cleanup interval
     this.stopPeriodicCleanup();
 
-    // Clean up old element versions every 5 minutes
+    // Clean up old element versions every 1 minute (more aggressive)
     this.cleanupInterval = setInterval(() => {
       const mapSize = this.broadcastedElementVersions.size;
-      if (mapSize > 1000) {
-        // If map is too large, keep only the most recent 500 entries
+      if (mapSize > 500) {
+        // If map is too large, keep only the most recent 250 entries
         const entries = Array.from(this.broadcastedElementVersions.entries());
-        const toKeep = entries.slice(-500);
+        const toKeep = entries.slice(-250);
         this.broadcastedElementVersions.clear();
         toKeep.forEach(([key, value]) => {
           this.broadcastedElementVersions.set(key, value);
         });
         console.log(`Cleaned up element version map: ${mapSize} -> ${this.broadcastedElementVersions.size}`);
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 60 * 1000); // 1 minute - more frequent cleanup
   }
 
   private stopPeriodicCleanup(): void {

@@ -33,8 +33,7 @@ import { HistoryExportDialog } from './components/collab/HistoryExportDialog';
 import { RoomHistoryManager } from './components/collab/RoomHistoryManager';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
-import { throttle } from './utils/throttle';
-import debounce from 'lodash.debounce';
+import { throttle, debounce } from './utils/throttle';
 import { FeatureFlags } from './utils/feature-flags';
 import { CollaborationHistoryService } from './services/collaboration-history';
 import type { HistoryEntry } from './types/history';
@@ -384,7 +383,6 @@ function App() {
   );
 
   // Create throttled pointer update handler with cleanup
-  const throttledPointerUpdateRef = useRef<ReturnType<typeof throttle> | null>(null);
   
   const handleCollabPointerUpdate = useCallback(
     (data: {
@@ -460,27 +458,12 @@ function App() {
     [handleCollabPointerUpdate]
   );
 
-  // Store in ref for cleanup
+  // Cleanup throttled function on unmount
   useEffect(() => {
-    throttledPointerUpdateRef.current = throttledPointerUpdate;
-
     return () => {
-      // Cleanup: cancel throttled function on unmount
-      if (throttledPointerUpdateRef.current) {
-        throttledPointerUpdateRef.current.cancel();
-      }
+      throttledPointerUpdate.cancel();
     };
   }, [throttledPointerUpdate]);
-  
-  // Use throttled version in callbacks
-  const handleCollabPointerUpdateThrottled = useCallback(
-    (data: Parameters<typeof handleCollabPointerUpdate>[0]) => {
-      if (throttledPointerUpdateRef.current) {
-        throttledPointerUpdateRef.current(data);
-      }
-    },
-    []
-  );
 
   // 公式方式: リモート更新による複雑なフラグ管理は不要
 
@@ -644,7 +627,8 @@ function App() {
     };
 
     // Apply styles after a short delay to ensure DOM is ready
-    setTimeout(enableUserListPointerEvents, 100);
+    const timeoutId = setTimeout(enableUserListPointerEvents, 100);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // デバッグ用: グローバルにsocket関数とExcalidraw APIを公開
@@ -673,8 +657,6 @@ function App() {
   ]);
 
   // Create throttled scroll handler with cleanup
-  const throttledScrollChangeRef = useRef<ReturnType<typeof throttle> | null>(null);
-  
   const handleScrollChange = useCallback(
     (scrollX: number, scrollY: number) => {
       if (isCollaborating && collabRef.current && excalidrawAPIRef.current) {
@@ -687,34 +669,19 @@ function App() {
     },
     [isCollaborating]
   );
-  
+
   // Create throttled function once using useMemo to prevent memory leak
   const throttledScrollChange = useMemo(
     () => throttle(handleScrollChange, 100), // 100ms throttle
     [handleScrollChange]
   );
 
-  // Store in ref for cleanup
+  // Cleanup throttled function on unmount
   useEffect(() => {
-    throttledScrollChangeRef.current = throttledScrollChange;
-
     return () => {
-      // Cleanup: cancel throttled function on unmount
-      if (throttledScrollChangeRef.current) {
-        throttledScrollChangeRef.current.cancel();
-      }
+      throttledScrollChange.cancel();
     };
   }, [throttledScrollChange]);
-  
-  // Use throttled version in callbacks
-  const handleScrollChangeThrottled = useCallback(
-    (scrollX: number, scrollY: number) => {
-      if (throttledScrollChangeRef.current) {
-        throttledScrollChangeRef.current(scrollX, scrollY);
-      }
-    },
-    []
-  );
 
   // ポインター更新のハンドラ (Excalidraw style)
   const handlePointerUpdate = useCallback(
@@ -851,7 +818,7 @@ function App() {
         });
 
         // Reapply pointer events styles when collaborators change
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           const userListElements = document.querySelectorAll(
             '.UserList, .UserList__wrapper, .UserList__collaborator'
           );
@@ -860,6 +827,9 @@ function App() {
             (el as HTMLElement).style.cursor = 'pointer';
           });
         }, 200);
+
+        // Store timeout ID for potential cleanup
+        return () => clearTimeout(timeoutId);
       }
     },
     []
@@ -1081,7 +1051,7 @@ function App() {
           onCollaborationStateChange={handleCollaborationStateChange}
           onCollaboratorsChange={handleCollaboratorsChange}
           onSceneUpdate={handleCollabSceneUpdate}
-          onPointerUpdate={handleCollabPointerUpdateThrottled}
+          onPointerUpdate={throttledPointerUpdate}
           onViewportUpdate={handleCollabViewportUpdate}
           onImageReceived={handleImageReceived}
         />
@@ -1093,7 +1063,7 @@ function App() {
           onChange={handleChange}
           excalidrawAPI={handleExcalidrawMount}
           onPointerUpdate={handlePointerUpdate}
-          onScrollChange={handleScrollChangeThrottled}
+          onScrollChange={throttledScrollChange}
           langCode="ja"
           theme={(currentAppState as any).theme || "light"}
           name="Excalidraw Board"

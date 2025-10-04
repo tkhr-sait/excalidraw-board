@@ -73,30 +73,31 @@ export class ExcalidrawPage {
 
   async drawRectangle(startX: number, startY: number, endX: number, endY: number) {
     await this.selectTool('rectangle');
-    
-    // Canvas上でドラッグ操作
-    await this.canvas.hover({ position: { x: startX, y: startY } });
+
+    // Canvas上でドラッグ操作（より安全な方法）
+    await this.page.mouse.move(startX, startY);
     await this.page.mouse.down();
-    await this.canvas.hover({ position: { x: endX, y: endY } });
+    await this.page.mouse.move(endX, endY);
     await this.page.mouse.up();
-    
+
     // 図形が描画されるまで待つ
     await this.page.waitForTimeout(500);
   }
 
   async drawEllipse(centerX: number, centerY: number, radiusX: number, radiusY: number) {
     await this.selectTool('ellipse');
-    
+
     const startX = centerX - radiusX;
     const startY = centerY - radiusY;
     const endX = centerX + radiusX;
     const endY = centerY + radiusY;
-    
-    await this.canvas.hover({ position: { x: startX, y: startY } });
+
+    // Canvas上でドラッグ操作（より安全な方法）
+    await this.page.mouse.move(startX, startY);
     await this.page.mouse.down();
-    await this.canvas.hover({ position: { x: endX, y: endY } });
+    await this.page.mouse.move(endX, endY);
     await this.page.mouse.up();
-    
+
     await this.page.waitForTimeout(500);
   }
 

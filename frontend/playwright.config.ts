@@ -37,6 +37,18 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
       testIgnore: 'performance.spec.ts', // WebKitでPerfテストをスキップ
     },
+    {
+      name: 'stress-test',
+      use: {
+        ...devices['Desktop Chrome'],
+        // メモリ測定を有効化するための追加フラグ
+        launchOptions: {
+          args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'],
+        },
+      },
+      timeout: 1800000, // 30分
+      testMatch: 'memory-leak-stress-test.spec.ts',
+    },
   ],
   webServer: {
     command: 'npm run dev',
