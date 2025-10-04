@@ -68,6 +68,15 @@ export function useSocket(options: UseSocketOptions = {}) {
   const [isConnected, setIsConnected] = useState(socketService.isConnected());
 
   useEffect(() => {
+    // Clean up any existing listeners before setting up new ones
+    // This prevents duplicate listeners on reconnection
+    listenersRef.current.forEach((callbacks, event) => {
+      callbacks.forEach((callback) => {
+        socketService.off(event as SocketEventName, callback as any);
+      });
+    });
+    listenersRef.current.clear();
+
     if (autoConnect && !socketService.isConnected()) {
       // Try to connect with primary URL and fallback URLs
       console.log('Attempting WebSocket connection to:', primaryUrl);

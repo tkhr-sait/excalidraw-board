@@ -15,6 +15,7 @@ export class SocketService {
   private currentUrl: string | null = null;
   private fallbackUrls: string[] = [];
   private connectionRetryCount = 0;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   connect(url: string, fallbackUrls: string[] = []): void {
     if (this.socket?.connected) {
@@ -43,6 +44,7 @@ export class SocketService {
     });
 
     this.setupBaseEventListeners();
+    this.startPeriodicCleanup();
   }
 
   disconnect(): void {
@@ -51,11 +53,13 @@ export class SocketService {
       this.reconnectTimeout = null;
     }
 
+    this.stopPeriodicCleanup();
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
-    
+
     this.roomId = null;
     this.roomKey = null;
     this.socketInitialized = false;
@@ -306,6 +310,33 @@ export class SocketService {
 
   clearBroadcastedElements(): void {
     this.broadcastedElementVersions.clear();
+  }
+
+  private startPeriodicCleanup(): void {
+    // Stop any existing cleanup interval
+    this.stopPeriodicCleanup();
+
+    // Clean up old element versions every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      const mapSize = this.broadcastedElementVersions.size;
+      if (mapSize > 1000) {
+        // If map is too large, keep only the most recent 500 entries
+        const entries = Array.from(this.broadcastedElementVersions.entries());
+        const toKeep = entries.slice(-500);
+        this.broadcastedElementVersions.clear();
+        toKeep.forEach(([key, value]) => {
+          this.broadcastedElementVersions.set(key, value);
+        });
+        console.log(`Cleaned up element version map: ${mapSize} -> ${this.broadcastedElementVersions.size}`);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+  }
+
+  private stopPeriodicCleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
   }
 }
 
