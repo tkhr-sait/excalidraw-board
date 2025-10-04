@@ -2,6 +2,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   forwardRef,
   useImperativeHandle,
 } from 'react';
@@ -101,7 +102,20 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
   const [roomKey, setRoomKey] = useState<string | null>(null);
   // Collaborators are now managed by Excalidraw's official API
 
-  // Socketイベントハンドラの設定
+  // Refs to access current state in event handlers
+  const stateRef = useRef(state);
+  const roomKeyRef = useRef(roomKey);
+
+  // Update refs when state changes
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    roomKeyRef.current = roomKey;
+  }, [roomKey]);
+
+  // Socketイベントハンドラの設定 - Fixed dependencies to prevent memory leak
   useEffect(() => {
     // Handle init-room event (Excalidraw style)
     const handleInitRoom = () => {
@@ -113,7 +127,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
     const handleNewUser = (socketId: string) => {
       console.log('New user joined:', socketId);
       // Broadcast full scene to the new user (like Excalidraw)
-      if (state.isInRoom && roomKey) {
+      if (stateRef.current.isInRoom && roomKeyRef.current) {
         // Signal parent to broadcast full scene
         window.dispatchEvent(new CustomEvent('broadcastFullScene'));
       }
@@ -125,13 +139,13 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
 
       // Create collaborators array for state management
       const collaboratorsArray: RoomUser[] = socketIds.map((socketId) => {
-        const existing = state.collaborators.find((c) => c.id === socketId);
+        const existing = stateRef.current.collaborators.find((c) => c.id === socketId);
         if (existing) {
           return existing;
         } else if (socketId === socketService.getSocketId()) {
           return {
             id: socketId,
-            username: state.username || 'You',
+            username: stateRef.current.username || 'You',
             color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
           };
         } else {
@@ -156,9 +170,9 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
       onCollaboratorsChange?.(collaboratorsArray);
 
       // Use deterministic room key based on room ID for all users
-      if (!roomKey && collaboratorsArray.length > 0) {
-        const currentRoomId = state.roomId || 'default';
-        const currentUsername = state.username || 'Anonymous';
+      if (!roomKeyRef.current && collaboratorsArray.length > 0) {
+        const currentRoomId = stateRef.current.roomId || 'default';
+        const currentUsername = stateRef.current.username || 'Anonymous';
 
         // Generate deterministic key from room ID so all users have the same key
         const deterministicKey = generateDeterministicKey(currentRoomId);
@@ -175,14 +189,14 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
           currentRoomId,
           currentUsername
         );
-      } else if (roomKey) {
+      } else if (roomKeyRef.current) {
         // If room key already exists, just close dialog and update state
         setShowRoomDialog(false);
-        const currentRoomId = state.roomId || 'default';
-        const currentUsername = state.username || 'Anonymous';
+        const currentRoomId = stateRef.current.roomId || 'default';
+        const currentUsername = stateRef.current.username || 'Anonymous';
         onCollaborationStateChange?.(
           true,
-          roomKey,
+          roomKeyRef.current,
           currentRoomId,
           currentUsername
         );
@@ -192,8 +206,8 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
     // Handle first-in-room event
     const handleFirstInRoom = () => {
       console.log('First user in room');
-      const roomId = state.roomId || 'default';
-      const username = state.username || 'Anonymous';
+      const roomId = stateRef.current.roomId || 'default';
+      const username = stateRef.current.username || 'Anonymous';
 
       const mySocketId = socketService.socket?.id || '';
       const myCollaborator = {
@@ -214,7 +228,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
       setShowRoomDialog(false);
 
       // Initialize deterministic room key and notify collaboration state
-      if (!roomKey) {
+      if (!roomKeyRef.current) {
         const deterministicKey = generateDeterministicKey(roomId);
         console.log(
           'First in room, setting deterministic room key for room:',
@@ -224,7 +238,7 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
         socketService.setRoomKey(deterministicKey);
         onCollaborationStateChange?.(true, deterministicKey, roomId, username);
       } else {
-        onCollaborationStateChange?.(true, roomKey, roomId, username);
+        onCollaborationStateChange?.(true, roomKeyRef.current, roomId, username);
       }
 
       // Notify about collaborator changes - App.tsx will handle Excalidraw updates
@@ -244,12 +258,12 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
       encryptedData: ArrayBuffer,
       iv: Uint8Array
     ) => {
-      if (!roomKey) return;
+      if (!roomKeyRef.current) return;
 
       const decryptedData = await syncPortal.decryptPayload(
         iv,
         encryptedData,
-        roomKey
+        roomKeyRef.current
       );
       if (!decryptedData) return;
 
@@ -455,8 +469,8 @@ export const Collab = forwardRef<CollabHandle, CollabProps>((props, ref) => {
   }, [
     socket,
     syncPortal,
-    roomKey,
-    state,
+    // Removed state and roomKey to prevent memory leak
+    // Using refs instead: stateRef and roomKeyRef
     onCollaborationStateChange,
     onCollaboratorsChange,
     onSceneUpdate,

@@ -37,7 +37,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(rg:*)",
       "WebFetch(domain:docs.excalidraw.com)",
-      "Bash(sed -n '190,205p' frontend/src/components/collab/HistoryViewer.tsx)"
+      "Bash(sed -n '190,205p' frontend/src/components/collab/HistoryViewer.tsx)",
+      "Bash(tee:*)"
     ],
     "deny": []
   },

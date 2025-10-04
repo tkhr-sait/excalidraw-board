@@ -34,6 +34,7 @@ import { RoomHistoryManager } from './components/collab/RoomHistoryManager';
 import { useCollaboration } from './hooks/useCollaboration';
 import { useSocket } from './hooks/useSocket';
 import { throttle } from './utils/throttle';
+import debounce from 'lodash.debounce';
 import { FeatureFlags } from './utils/feature-flags';
 import { CollaborationHistoryService } from './services/collaboration-history';
 import type { HistoryEntry } from './types/history';
@@ -43,6 +44,21 @@ import './styles/excalidraw-overrides.css';
 function App() {
   const socket = useSocket();
   const collaboration = useCollaboration();
+
+  // Create debounced version of syncElements to reduce network traffic
+  const debouncedSyncElements = useMemo(
+    () => debounce((elements: any[], files: any) => {
+      collaboration.syncElements(elements, files);
+    }, 100), // 100ms debounce to batch rapid changes
+    [collaboration]
+  );
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSyncElements.cancel();
+    };
+  }, [debouncedSyncElements]);
   const [, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const [initialData, setInitialData] = useState<{
     elements: readonly ExcalidrawElement[];
@@ -438,17 +454,23 @@ function App() {
     [collaborators]
   );
   
-  // Create throttled version once and store in ref
+  // Create throttled function once using useMemo to prevent memory leak
+  const throttledPointerUpdate = useMemo(
+    () => throttle(handleCollabPointerUpdate, 16), // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
+    [handleCollabPointerUpdate]
+  );
+
+  // Store in ref for cleanup
   useEffect(() => {
-    throttledPointerUpdateRef.current = throttle(handleCollabPointerUpdate, 16); // 16ms throttle matches Excalidraw's CURSOR_SYNC_TIMEOUT
-    
+    throttledPointerUpdateRef.current = throttledPointerUpdate;
+
     return () => {
       // Cleanup: cancel throttled function on unmount
       if (throttledPointerUpdateRef.current) {
         throttledPointerUpdateRef.current.cancel();
       }
     };
-  }, [handleCollabPointerUpdate]);
+  }, [throttledPointerUpdate]);
   
   // Use throttled version in callbacks
   const handleCollabPointerUpdateThrottled = useCallback(
@@ -560,8 +582,9 @@ function App() {
         
         // Include files in sync if image sharing is enabled
         const filesToSync = FeatureFlags.isImageSharingEnabled() ? files : {};
-        
-        collaboration.syncElements(
+
+        // Use debounced sync to reduce network traffic
+        debouncedSyncElements(
           elementsForSync.map((el) => ({
             ...el,
             version: el.version || 1,
@@ -665,17 +688,23 @@ function App() {
     [isCollaborating]
   );
   
-  // Create throttled version once and store in ref
+  // Create throttled function once using useMemo to prevent memory leak
+  const throttledScrollChange = useMemo(
+    () => throttle(handleScrollChange, 100), // 100ms throttle
+    [handleScrollChange]
+  );
+
+  // Store in ref for cleanup
   useEffect(() => {
-    throttledScrollChangeRef.current = throttle(handleScrollChange, 100); // 100ms throttle
-    
+    throttledScrollChangeRef.current = throttledScrollChange;
+
     return () => {
       // Cleanup: cancel throttled function on unmount
       if (throttledScrollChangeRef.current) {
         throttledScrollChangeRef.current.cancel();
       }
     };
-  }, [handleScrollChange]);
+  }, [throttledScrollChange]);
   
   // Use throttled version in callbacks
   const handleScrollChangeThrottled = useCallback(
@@ -900,12 +929,13 @@ function App() {
           }
         }
         
-        // キャンバスをクリア
-        excalidrawAPIRef.current.updateScene({
-          elements: [],
-          appState: {},
-        });
-        
+        // キャンバスをクリア (excalidraw公式のresetScene APIを使用)
+        excalidrawAPIRef.current.resetScene();
+        excalidrawAPIRef.current.history.clear();
+
+        // 削除要素トラッカーもクリア (過去の削除要素が新しいルームに持ち込まれないように)
+        recentlyDeletedTracker.current.clear();
+
         // Set flag to wait for initial sync from existing users
         setIsWaitingForInitialSync(true);
         
