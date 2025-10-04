@@ -96,6 +96,7 @@ export interface ExcalidrawImperativeAPI {
     elements?: readonly ExcalidrawElement[];
     appState?: Partial<AppState>;
   }) => void;
+  resetScene: () => void;
   getAppState: () => Readonly<AppState>;
   history: {
     clear: () => void;

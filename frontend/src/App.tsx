@@ -929,12 +929,13 @@ function App() {
           }
         }
         
-        // キャンバスをクリア
-        excalidrawAPIRef.current.updateScene({
-          elements: [],
-          appState: {},
-        });
-        
+        // キャンバスをクリア (excalidraw公式のresetScene APIを使用)
+        excalidrawAPIRef.current.resetScene();
+        excalidrawAPIRef.current.history.clear();
+
+        // 削除要素トラッカーもクリア (過去の削除要素が新しいルームに持ち込まれないように)
+        recentlyDeletedTracker.current.clear();
+
         // Set flag to wait for initial sync from existing users
         setIsWaitingForInitialSync(true);
         
